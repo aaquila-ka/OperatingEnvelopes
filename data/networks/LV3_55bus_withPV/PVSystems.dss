@@ -1,0 +1,22 @@
+// https://opendss.epri.com/Properties6.html
+New XYCurve.VoltVar npts=6 xarray=[0.1 0.9 0.9565217391304348 1.0434782608695652 1.1217391304347826 2] yarray=[0.44 0.44 0 0 -0.6 -0.6]
+New XYCurve.VoltWatt npts=4 xarray=[0.1 1.1 1.1304347826086956 2] yarray=[1 1 0.2 0.2]
+
+New InvControl.invall CombiMode=VV_VW vvc_curve1=VoltVar voltwatt_curve=VoltWatt RefReactivePower=VARMAX_VARS VoltwattYAxis=PMPPPU 
+// VarChangeTolerance= VoltageChangeTolerance=            # "VarChangeTolerance=1e-6 VoltageChangeTolerance=1e-7" for best accuracy
+
+
+
+new PVSystem.Ld24_LOAD_A phases=1 bus1=B1044.1 kv=0.230 kVA=5 pf=-0.95 Pmpp=5  irradiance=1 Temperature=25 %Cutin=0.0 %Cutout=0.0  model=1  vminpu=0.1 vmaxpu=2
+new PVSystem.Ld248_LOAD_B phases=1 bus1=B2560.2 kv=0.230  kVA=5 Pmpp=5  irradiance=1 Temperature=25 %Cutin=0.0 %Cutout=0.0  model=1  vminpu=0.1 vmaxpu=2
+new PVSystem.Ld626_LOAD_C phases=1 bus1=B2055.3 kv=0.230  kVA=5 Pmpp=5  irradiance=1 Temperature=25 %Cutin=0.0 %Cutout=0.0  model=1  vminpu=0.1 vmaxpu=2
+new PVSystem.Ld868_LOAD_A phases=1 bus1=B2190.1 kv=0.230  kVA=5 Pmpp=5  irradiance=1 Temperature=25 %Cutin=0.0 %Cutout=0.0  model=1  vminpu=0.1 vmaxpu=2
+new PVSystem.Ld1291_LOAD_B phases=1 bus1=B828.2 kv=0.230  kVA=5 Pmpp=5  irradiance=1 Temperature=25 %Cutin=0.0 %Cutout=0.0  model=1  vminpu=0.1 vmaxpu=2
+new PVSystem.Ld1446_LOAD_C phases=1 bus1=B260.3 kv=0.230  kVA=5 Pmpp=5  irradiance=1 Temperature=25 %Cutin=0.0 %Cutout=0.0  model=1  vminpu=0.1 vmaxpu=2
+new PVSystem.Ld1668_LOAD_A phases=1 bus1=B605.1 kv=0.230  kVA=5 Pmpp=5  irradiance=1 Temperature=25 %Cutin=0.0 %Cutout=0.0  model=1  vminpu=0.1 vmaxpu=2
+new PVSystem.Ld1895_LOAD_B phases=1 bus1=B1804.2 kv=0.230  kVA=5 Pmpp=5  irradiance=1 Temperature=25 %Cutin=0.0 %Cutout=0.0  model=1   vminpu=0.1 vmaxpu=2
+new PVSystem.Ld1970_LOAD_C phases=1 bus1=B2492.3 kv=0.230 kVA=5 Pmpp=5  irradiance=1 Temperature=25 %Cutin=0.0 %Cutout=0.0  model=1   vminpu=0.1 vmaxpu=2
+new PVSystem.Ld2050_LOAD_A phases=1 bus1=B1821.1 kv=0.230  kVA=5 Pmpp=5  irradiance=1 Temperature=25 %Cutin=0.0 %Cutout=0.0  model=1   vminpu=0.1 vmaxpu=2
+new PVSystem.Ld2186_LOAD_B phases=1 bus1=B1754.2 kv=0.230  kVA=5 Pmpp=5  irradiance=1 Temperature=25 %Cutin=0.0 %Cutout=0.0  model=1   vminpu=0.1 vmaxpu=2
+new PVSystem.Ld2804_LOAD_C phases=1 bus1=B2443.3 kv=0.230  kVA=5 Pmpp=5  irradiance=1 Temperature=25 %Cutin=0.0 %Cutout=0.0  model=1   vminpu=0.1 vmaxpu=2
+
