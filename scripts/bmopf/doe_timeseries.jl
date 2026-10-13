@@ -1,25 +1,32 @@
 # scripts/bmopf/doe_timeseries.jl
 #
-# STEP 3: one full day, 48 half-hour steps.
+# STEP 3 (v2, after independent review): one full day, 48 half-hour steps.
 # House usage: 12 of the 99 real anonymised Victorian smart-meter profiles (P and Q, 5-min)
 # from Team-Nando OE1-Ideal (BSD-3, commit 96abbab), averaged to 30 min.
 # The 12 profiles are picked with a fixed seed and the mapping is written to a CSV.
 # At every step:
 #   clean   : records = truth = catalogue (all 16 mm2)        -> answer key DOE
-#   Case A  : truth all 22 service cables 4 mm2, records 16   -> issued = clean DOE (over-promise)
-#   Case B  : truth 16 mm2, records all 4 mm2                 -> issued = Case A DOE (lost export)
-# Source fixed at 1.03 pu, 207-253 V PN at customers, equal allocation, 5 kVA inverters.
+#   Case A  : truth all 22 service cables 4 mm2, records 16   -> issued = clean DOE
+#   (Case B is the mirror of Case A: lost % = 1/(1 + over-promise) - 1; reported for completeness)
+# What the issued DOE does on the Case A street, read three ways:
+#   boundpoint_noVW : everyone exports exactly the DOE, Volt-Watt off (old, worst case)
+#   worst_VW        : everyone MAY export up to the DOE, inverters keep Volt-Watt/Volt-VAr/5 kVA
+#   pv_VW           : as worst_VW but nobody can export more than the sun gives:
+#                     cap = min(DOE, 5 kW x pv_shape)  -> the realistic number; 0 at night
+# Source fixed at `pu` (default 1.03), 207-253 V PN at customers, equal allocation.
 #
 # RUN (fresh Julia, from C:\thesis\OperatingEnvelopes, julia +1.11 --project=bmopf)
 #   julia> using Logging; disable_logging(Logging.Warn)
 #   julia> include("scripts/bmopf/doe_timeseries.jl")
-#   julia> run_timeseries(steps = [1, 25])     # quick test: 00:00 and 12:00
-#   julia> run_timeseries()                    # full day, 48 steps
-# OUTPUT results/doe_timeseries.csv, results/timeseries_profile_map.csv
+#   julia> run_timeseries()                                   # full day at 1.03 pu
+#   julia> run_record_errors_at(25; n_draws = 20)             # record errors at 12:00 loads
+# OUTPUT results/doe_timeseries.csv, results/timeseries_profile_map.csv,
+#        results/doe_record_errors_1200.csv
 
 include(joinpath(pwd(), "scripts", "bmopf", "doe_record_errors.jl"))
 
 const TS_FILE = joinpath(pwd(), "data", "profiles", "TeamNando_OE1_LoadShapes.txt")
+const PV_KW   = 5.0
 
 # ---- read the 5-min shapes and average to 48 half-hours
 parse_vec(s) = [parse(Float64, strip(x)) for x in split(s, ",")]
@@ -80,47 +87,70 @@ end
 
 tlabel(t) = @sprintf("%02d:%02d", div(t - 1, 2), 30 * mod(t - 1, 2))
 
-function run_timeseries(; steps = 1:48)
+# ---- one time step, any source voltage; used by the day run and the source sweep
+function ts_step(t, pmap, P, Q, pv; pu = RE_PU)
+    clean = set_loads!(make_net(pu), pmap, P, Q, t)
+    small = all_small!(set_loads!(make_net(pu), pmap, P, Q, t))
+    c_kw, c_b, c_v, c_st = ts_doe(clean)
+    a_kw, a_b, a_v, a_st = ts_doe(small)
+    bp_v, bp_note = re_street(small, c_kw)                 # old bound-point, Volt-Watt off
+    w   = re_realised(small, c_kw)                         # may export up to DOE, Volt-Watt on
+    pvc = min(c_kw, PV_KW * pv[t])
+    p   = re_realised(small, pvc)                          # limited by available sun, Volt-Watt on
+    return (t = t, pv = pv[t], c_kw = c_kw, c_b = c_b, c_v = c_v, c_st = c_st,
+            a_kw = a_kw, a_b = a_b, a_st = a_st,
+            gap = c_kw - a_kw, over = 100 * (c_kw / a_kw - 1), lossB = 100 * (a_kw / c_kw - 1),
+            bp_v = bp_v, bp_note = bp_note, w = w, pvc = pvc, p = p)
+end
+
+const TS_HEADER = "step,time,source_pu,pv_shape,daylight,total_load_kW,clean_kW,clean_binding,clean_max_vpn_V,clean_status,A_correct_kW,A_binding,A_status,A_gap_kW,A_overpromise_pct,A_boundpoint_V_noVW,A_boundpoint_note,A_worst_V_VW,A_worst_n_over_253,A_worst_curtail_kW,pv_cap_kW,A_pv_V_VW,A_pv_n_over_253,A_pv_curtail_kW,B_lost_pct_mirror"
+
+function ts_row(s, pu, load_kw)
+    @sprintf("%d,%s,%.3f,%.4f,%s,%.4f,%.6f,%s,%.4f,%s,%.6f,%s,%s,%.6f,%.3f,%.4f,%s,%.4f,%d,%.6f,%.6f,%.4f,%d,%.6f,%.3f",
+             s.t, tlabel(s.t), pu, s.pv, s.pv > 0 ? "yes" : "no", load_kw, s.c_kw, s.c_b, s.c_v, s.c_st,
+             s.a_kw, s.a_b, s.a_st, s.gap, s.over, s.bp_v, s.bp_note,
+             s.w.v, s.w.n_over, s.w.curtail_kW, s.pvc, s.p.v, s.p.n_over, s.p.curtail_kW, s.lossB)
+end
+
+function run_timeseries(; steps = 1:48, pu = RE_PU, out = "doe_timeseries.csv")
     t0 = time()
     P, Q, pv = read_profiles()
-    pmap = profile_map(make_net(RE_PU), P)
+    pmap = profile_map(make_net(pu), P)
     open(joinpath(pwd(), "results", "timeseries_profile_map.csv"), "w") do io
         println(io, "load,profile,daily_kWh")
         for (ld, sh) in pmap
             @printf(io, "%s,%s,%.3f\n", ld, sh, sum(P[sh]) / 2)
         end
     end
-    println("time   pv   load kW | clean kW  bind      V     | A: correct  over-prom  real V   | B: issued  lost")
+    println("time   pv cap | clean kW  bind    | A kW   gap kW  over-prom | bound V  worst V(VW) | sun-limited: V(VW) >253 curtail")
     rows = String[]
     for t in steps
         load_kw = sum(P[sh][t] for (_, sh) in pmap)
-        row = try
-            clean = set_loads!(make_net(RE_PU), pmap, P, Q, t)
-            small = all_small!(set_loads!(make_net(RE_PU), pmap, P, Q, t))
-            c_kw, c_b, c_v, c_st = ts_doe(clean)
-            a_kw, a_b, a_v, a_st = ts_doe(small)
-            a_vreal, a_note = re_street(small, c_kw)       # Case A: issued clean DOE on 4 mm2 street
-            b_vreal, b_note = re_street(clean, a_kw)       # Case B: issued 4 mm2 DOE on 16 mm2 street
-            overA = 100 * (c_kw / a_kw - 1)
-            lossB = 100 * (a_kw / c_kw - 1)
-            @printf("%s  %4.2f  %6.2f  | %7.3f  %-9s %6.2f | %7.3f   %+7.1f %%  %6.2f %-3s | %7.3f  %+6.1f %%\n",
-                    tlabel(t), pv[t], load_kw, c_kw, c_b, c_v, a_kw, overA, a_vreal,
-                    a_note == "delivered" ? "" : "(c)", a_kw, lossB)
-            @sprintf("%d,%s,%.4f,%.4f,%.6f,%s,%.4f,%s,%.6f,%s,%s,%.3f,%.4f,%s,%.3f,%.4f,%s",
-                     t, tlabel(t), pv[t], load_kw, c_kw, c_b, c_v, c_st, a_kw, a_b, a_st,
-                     overA, a_vreal, a_note, lossB, b_vreal, b_note)
+        try
+            s = ts_step(t, pmap, P, Q, pv; pu = pu)
+            @printf("%s %5.2f  | %7.3f  %-7s | %6.3f %+6.3f  %+7.1f %% | %7.2f%s  %7.2f    | %7.2f  %3d  %6.3f\n",
+                    tlabel(t), s.pvc, s.c_kw, s.c_b, s.a_kw, s.gap, s.over, s.bp_v,
+                    s.bp_note == "delivered" ? " " : "c", s.w.v, s.p.v, s.p.n_over, s.p.curtail_kW)
+            push!(rows, ts_row(s, pu, load_kw))
         catch err
             msg = first(replace(sprint(showerror, err), "," => " ", "\n" => " "), 120)
             println(tlabel(t), "  ERROR: ", msg)
-            @sprintf("%d,%s,%.4f,%.4f,NaN,error,NaN,error,NaN,error,error,NaN,NaN,%s,NaN,NaN,error",
-                     t, tlabel(t), pv[t], load_kw, "error: " * msg)
         end
-        push!(rows, row)
     end
-    open(joinpath(pwd(), "results", "doe_timeseries.csv"), "w") do io
-        println(io, "step,time,pv_shape,total_load_kW,clean_kW,clean_binding,clean_max_vpn_V,clean_status,A_correct_kW,A_binding,A_status,A_overpromise_pct,A_true_street_V,A_note,B_lost_pct,B_true_street_V,B_note")
+    open(joinpath(pwd(), "results", out), "w") do io
+        println(io, TS_HEADER)
         foreach(l -> println(io, l), rows)
     end
-    @printf("\nwritten results/doe_timeseries.csv (%d rows) and results/timeseries_profile_map.csv  (%.0f s)\n",
-            length(rows), time() - t0)
+    @printf("\nwritten results/%s (%d rows) and results/timeseries_profile_map.csv  (%.0f s)\n",
+            out, length(rows), time() - t0)
+end
+
+# ---- record-error draws (step 2) at the loads of one half-hour of the day
+function run_record_errors_at(t; n_draws = 20, pu = RE_PU)
+    P, Q, pv = read_profiles()
+    pmap = profile_map(make_net(pu), P)
+    prep!(net) = set_loads!(net, pmap, P, Q, t)
+    tag = replace(tlabel(t), ":" => "")
+    run_record_errors(; n_draws = n_draws, pu = pu, prep! = prep!,
+                      setting = "day_" * tag, out = "doe_record_errors_" * tag * ".csv")
 end
