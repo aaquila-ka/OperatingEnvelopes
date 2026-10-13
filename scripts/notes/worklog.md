@@ -198,3 +198,27 @@ inverter-limited at 1.03 pu; Geth's australian_pv uses 6 kVA with 5 kW, which wo
 **Open**
 - Cable ratio 3.07 (dataset) vs about 4.0 (IEC) is conservative; other fairness rules; second feeder; 7 % loss gap.
 
+
+## 13 Oct 2026 (night): what a utility can do, sharing rules, second review
+
+**Step 4: robust DOE vs checking records** (doe_robust.jl)
+- Hedge in advance (CSIRO-style): DOE safe if every service cable's R is up to b higher. Cost vs clean at 12:00: 3.0 / 5.8 / 11.0 % for b = 5 / 10 / 20 % (snapshot 0.1-0.4 %). Much cheaper than CSIRO's 37 % at 5 % on their network: the cost depends on the network.
+- PowerOptLab scenario feature (R x (1-b), R, R x (1+b), and mixed: l_3432 +b, others -b) gives the same DOE to 3 decimals, so the uniform worst case also covers uneven errors here.
+- Checking the 12 customer cables one by one (unchecked = 4 mm2): at 12:00, 1.96 kW (none) -> 2.43 (1) -> about 2.55 (7-9) -> 3.12 (10, OPF-ranked) -> 4.25 (11). Shortest first recovers nothing. Under equal allocation checking pays off only near the end.
+- Small non-monotone drops (up to 0.02 kW) when one more cable is checked: real Volt-VAr coupling between customers (reproduced in OpenDSS, gone with Volt-VAr off).
+
+**Step 5: sharing rules** (doe_fairness.jl)
+- One wrong record (l_3432): over-voltage always at b828 phase b (Ld1291, the owner of that cable), 254.60 V snapshot / 255.15 V at 12:00, under equal, proportional and max-min.
+- Who absorbs the correction: equal 12 of 12 customers (21.6 / 27.5 kW wrongly allocated), proportional 1 of 12 (1.9 / 2.4 kW, about 12x less, but that customer ends up slightly lower: 2.68 vs 2.73 kW), max-min 8-10 of 12.
+- All 22 wrong: error spreads under every rule; proportional curtails more at 12:00 (3.3 vs 0.9 kW).
+- Per-customer labels for 3 rules saved in doe_fairness_customers.csv (216 rows).
+
+**Second independent review**
+- All round-1 issues fixed or disclosed; realised reading valid (exact OpenDSS within 0.03 V).
+- Fixed: DATA_CARD "up to 8" -> 12; cross-reference; fairness wording (physical harm same under every rule); added which customers exceed 253 V; mixed robust scenario; OPF-ranked check order; docs for steps 12-13.
+- Disclosed: BMOPF smooths the Volt-Watt corner (curtailment about 5 % high when many customers sit just above 253 V, voltages unaffected); error largest around 1.025-1.03 pu; one partly cloudy day.
+- Lesson: the browser saved new downloads as "name (1).jl" and the old files were copied; always copy the newest download and check with Select-String.
+
+**Open**
+- Cable ratio 4.0 (IEC); clear-sky day; checking records under proportional sharing; 7 % loss gap; second feeder.
+
