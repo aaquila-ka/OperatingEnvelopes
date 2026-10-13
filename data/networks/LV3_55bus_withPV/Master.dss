@@ -1,4 +1,4 @@
-new circuit.lv3_55bus angle=-30.0000000000 basekv=11.0000000000 pu=1.07 phases=3 bus1=sourcebus model=ideal
+new circuit.lv3_55bus angle=-30.0000000000 basekv=11.0000000000 pu=1.00 phases=3 bus1=sourcebus model=ideal
 
 set defaultbasefrequency=50.0000000000
 set basefrequency=50.0000000000

@@ -3,9 +3,9 @@
   BMOPF NETWORK SUMMARY REPORT
 ──────────────────────────────────────────────────────────────────────
   Case name                     lv3_55bus
-  Generated                     2026-10-13 14:31:34
+  Generated                     2026-10-13 15:39:12
   Findings                      0 errors, 3 warnings, 26 info
-  Convention                    MV_6.8kV: 4-wire; LV_267V: 4-wire; 14 grounding point(s); symmetric π-only line model
+  Convention                    MV_6.4kV: 4-wire; LV_250V: 4-wire; 14 grounding point(s); symmetric π-only line model
 
 ──────────────────────────────────────────────────────────────────────
   1. COMPONENT INVENTORY
@@ -36,11 +36,11 @@
 
   Level          Nominal      Buses   Lines   Loads   Generators
   ────────────────────────────────────────────────────────────
-  MV_6.8kV       6.8 kV       2       1       0       0
-  LV_267V        267.0 V      55      46      12      0
+  MV_6.4kV       6.35 kV      2       1       0       0
+  LV_250V        250.0 V      55      46      12      0
 
   Transformer transitions:
-    tx3703  MV_6.8kV → LV_267V  [delta_wye, Dyn0]
+    tx3703  MV_6.4kV → LV_250V  [delta_wye, Dyn0]
 
 ──────────────────────────────────────────────────────────────────────
   3. CONNECTIVITY & TOPOLOGY
@@ -108,7 +108,7 @@
   [INFO] I.OPS.UNLOADED_PHASE
     Galvanic zone anchored at bus 'sourcebus' has no load connected to phase terminal 'c'.
   [INFO] I.OPS.FEEDER_SHORT
-    Galvanic zone anchored at bus 'sourcebus' (MV, 6.8 kV) has an electrical reach of 0.1 m — shorter than typical for a MV feeder (200.0 m); electrically it is a stub/service drop rather than a feeder.
+    Galvanic zone anchored at bus 'sourcebus' (MV, 6.35 kV) has an electrical reach of 0.1 m — shorter than typical for a MV feeder (200.0 m); electrically it is a stub/service drop rather than a feeder.
 
 ──────────────────────────────────────────────────────────────────────
   6. INFEASIBILITY PRE-FLIGHT
@@ -136,11 +136,11 @@
 ──────────────────────────────────────────────────────────────────────
   7. PROVENANCE & MODEL CONVENTIONS
 ──────────────────────────────────────────────────────────────────────
-  Inferred convention           MV_6.8kV: 4-wire; LV_267V: 4-wire; 14 grounding point(s); symmetric π-only line model
+  Inferred convention           MV_6.4kV: 4-wire; LV_250V: 4-wire; 14 grounding point(s); symmetric π-only line model
 
   Wires per voltage level:
-    MV_6.8kV       4-wire   (2 of 2 buses carry neutral)
-    LV_267V        4-wire   (55 of 55 buses carry neutral)
+    MV_6.4kV       4-wire   (2 of 2 buses carry neutral)
+    LV_250V        4-wire   (55 of 55 buses carry neutral)
 
   Neutral grounding:
     Buses with neutral            57
@@ -160,8 +160,8 @@
   OpenDSS default fingerprints: 0 ✓ (none detected)
 
   Earthing system per galvanic zone:
-    6.8 kV     2 bus(es)    4-wire   star: solid        +0 downstream → solidly earthed
-    267.0 V    55 bus(es)   4-wire   star: solid        +12 downstream → TN-C-S / multi-earthed (PME/MEN-style)
+    6.35 kV    2 bus(es)    4-wire   star: solid        +0 downstream → solidly earthed
+    250.0 V    55 bus(es)   4-wire   star: solid        +12 downstream → TN-C-S / multi-earthed (PME/MEN-style)
 
   [INFO] I.PROV.B_OFFDIAG  linecode/abc4x95_lv_oh_4w_bundled
     Linecode 'abc4x95_lv_oh_4w_bundled' B_from_block has positive mutual susceptance — deviates from the Maxwell sign pattern; typical of screen-eliminated/bundled cable reductions, otherwise a sign-convention suspect.
@@ -239,7 +239,7 @@
     [INFO] I.OPS.UNLOADED_PHASE
       Galvanic zone anchored at bus 'sourcebus' has no load connected to phase terminal 'c'.
     [INFO] I.OPS.FEEDER_SHORT
-      Galvanic zone anchored at bus 'sourcebus' (MV, 6.8 kV) has an electrical reach of 0.1 m — shorter than typical for a MV feeder (200.0 m); electrically it is a stub/service drop rather than a feeder.
+      Galvanic zone anchored at bus 'sourcebus' (MV, 6.35 kV) has an electrical reach of 0.1 m — shorter than typical for a MV feeder (200.0 m); electrically it is a stub/service drop rather than a feeder.
     [INFO] I.PROV.B_OFFDIAG  linecode/abc4x95_lv_oh_4w_bundled
       Linecode 'abc4x95_lv_oh_4w_bundled' B_from_block has positive mutual susceptance — deviates from the Maxwell sign pattern; typical of screen-eliminated/bundled cable reductions, otherwise a sign-convention suspect.
     [INFO] I.PROV.B_OFFDIAG  linecode/abc4x95_lv_oh_4w_bundled
