@@ -3,8 +3,8 @@
   BMOPF NETWORK SUMMARY REPORT
 ──────────────────────────────────────────────────────────────────────
   Case name                     lv3_55bus
-  Generated                     2026-10-13 15:54:16
-  Findings                      0 errors, 3 warnings, 26 info
+  Generated                     2026-10-13 16:17:08
+  Findings                      0 errors, 2 warnings, 29 info
   Convention                    MV_6.4kV: 4-wire; LV_250V: 4-wire; 14 grounding point(s); symmetric π-only line model
 
 ──────────────────────────────────────────────────────────────────────
@@ -17,8 +17,8 @@
   linecode             22
   voltage_source       1
   load                 12
-      total P          14.4 kW
-      total Q          10.8 kvar
+      total P          12.0 kW
+      total Q          6.5 kvar
       SINGLE_PHASE     12
   shunt                13
   switch               8
@@ -63,12 +63,12 @@
 ──────────────────────────────────────────────────────────────────────
   4. DIVERSITY & VARIANCE
 ──────────────────────────────────────────────────────────────────────
-  Overall symmetry score:  LOW  (0 category/ies flagged)
+  Overall symmetry score:  MODERATE  (1 category/ies flagged)
 
-  load
-    p_nom          min=0.0  max=4000.0  CV=0.782  n=12
-    q_nom          min=500.0  max=5000.0  CV=1.438  n=12
-    Distinct (p,q) tuples: 6 / 12
+  load ⚠
+    p_nom          min=1000.0  max=1000.0  CV=0.0  n=12
+    q_nom          min=540.0  max=540.0  CV=0.0  n=12
+    Distinct (p,q) tuples: 1 / 12
   line
     length         min=0.0669  max=93.4  CV=1.107  n=47
   linecode
@@ -76,27 +76,35 @@
   bus
     Buses with voltage bounds: 0  (0.0%)
 
+  [WARN] W.DIV.LOAD_SYMMETRIC
+    11 of 12 loads share identical (p_nom, q_nom) — possible copy-paste symmetry.
+  [INFO] I.DIV.LOAD_CV_LOW
+    Load p_nom has very low coefficient of variation (0.0) — all loads nearly identical.
+  [INFO] I.DIV.LOAD_PF_DSS_DEFAULT
+    Load power factor mean 0.88 is within 1% of the OpenDSS default PF=0.88 (CV=0.0) — reactive power may not have been explicitly set.
   [INFO] I.DIV.LOAD_UNIFORM_MODEL
     All 12 loads use the constant_power model — no load exercises voltage dependence (ZIP/exponential); the case does not test voltage-dependent load behaviour.
   [INFO] I.DIV.LOAD_UNIFORM_CONFIG
     All 12 loads share the 'SINGLE_PHASE' configuration — no connection diversity.
+  [INFO] I.DIV.LOAD_PHASE_BALANCED
+    Galvanic zone anchored at 'b1006' has balanced aggregate load across 3 phase(s) (max spread 0.0%) — the network is effectively balanced and a single-phase equivalent would suffice.
 
 ──────────────────────────────────────────────────────────────────────
   5. LOADING & OPERATIONAL SUMMARY
 ──────────────────────────────────────────────────────────────────────
   Total installed load:
-    P                             14.4 kW
-    Q                             10.8 kvar
-    Power factor                  0.8 lagging
+    P                             12.0 kW
+    Q                             6.5 kvar
+    Power factor                  0.88 lagging
   Total generation capacity:
     P_max                         60.0 kW
-  Generation/load ratio         416.7%
+  Generation/load ratio         500.0%
 
   Load by configuration:
-    SINGLE_PHASE 14.4 kW
+    SINGLE_PHASE 12.0 kW
 
   Transformer utilisation (nominal load estimate):
-    tx3703           500.0 kVA rating   4.0%
+    tx3703           500.0 kVA rating   2.7%
 
   Line thermal limits:
     47 / 47 lines have thermal limit (100.0% constrained)
@@ -114,7 +122,7 @@
   6. INFEASIBILITY PRE-FLIGHT
 ──────────────────────────────────────────────────────────────────────
   Generation adequacy:
-    Total load                    14.4 kW
+    Total load                    12.0 kW
     Gen capacity                  0.0 W
     Import dependent              false
   Voltage bounds:
@@ -157,7 +165,7 @@
   Line model topology:
     symmetric π        22
 
-  OpenDSS default fingerprints: 0 ✓ (none detected)
+  OpenDSS default fingerprints: 12 hit(s) — see findings
 
   Earthing system per galvanic zone:
     6.35 kV    2 bus(es)    4-wire   star: solid        +0 downstream → solidly earthed
@@ -177,6 +185,8 @@
     Linecode 'uglv_240al_xlpe/nyl/pvc_ug_4w_bundled' B_to_block has positive mutual susceptance — deviates from the Maxwell sign pattern; typical of screen-eliminated/bundled cable reductions, otherwise a sign-convention suspect.
   [INFO] I.PROV.LINE_MODEL_UNIFORM
     All 22 line-model definition(s) use a single, consistent model: symmetric π. Every branch carries a symmetric π shunt — line charging is represented consistently across the network.
+  [INFO] I.PROV.DSS_DEFAULT_PF
+    12 load(s) have power factor exactly 0.88 — the OpenDSS default; reactive demand was likely never specified.
   [INFO] I.PROV.IMPEDANCE_TRANSFORM_KR
     9 three-wire linecode(s) match the impedance signature of Kron reduction — neutral row/column eliminated from the original four-wire Carson impedance matrix via Schur complement. Exact when every neutral is perfectly grounded; approximate with finite grounding. Zero-sequence behaviour is not captured by the three-wire representation.: moon_hv_oh_3wire, pluto_lv_oh_3wire, ughv_240al_triplex_ug_3w_bundled, ughv_240cu_hdpe/nyl/pvc_ug_3w_bundled, ughv_240cu_xlpe/nyl/pvc_ug_3w_bundled, ughv_400al_triplex_ug_3w_bundled, ughv_400al_xlpe/nyl/pvc_ug_3w_bundled, ughv_95al_xlpe/nyl/pvc_ug_3w_bundled, uglv_240al_xlpe/nyl/pvc_ug_3w_bundled.
   [INFO] I.PROV.LINE_SWITCH_LIKE  line/for_energymeter
@@ -212,26 +222,28 @@
 
   [INFO] I.BENCH.AUGMENTATION
     Case needs augmentation to be a non-trivial OPF benchmark: no priced slack or generator — the generation-cost objective is degenerate; add a cost to the voltage source at the source bus (augment_case does this by default) or dispatchable DERs; no voltage magnitude bounds on any bus — voltage is unconstrained; add v_min/v_max (phase-to-ground); no phase-to-neutral or sequence voltage bounds (vpn_*/vpos_*) — sequence bounds also improve solver robustness for 4-wire OPF.
-  [INFO] I.BENCH.LOAD_ZERO_PNOM
-    1 load(s) have p_nom = 0 on all phases — these loads impose no real power demand: ld1895_load_b.
 
 ──────────────────────────────────────────────────────────────────────
   9. DATA QUALITY SUMMARY
 ──────────────────────────────────────────────────────────────────────
-  Total findings: 29  (0 errors, 3 warnings, 26 info)
+  Total findings: 31  (0 errors, 2 warnings, 29 info)
 
   WARNINGS:
     [WARN] W.CONN.DANGLING
       15 bus(es) are degree-1 with no attached load, generator, shunt, capacitor, ibr, or source.
-    [WARN] W.DOM.LOAD_PF_LOW  load/ld2186_load_b
-      Load 'ld2186_load_b' has power factor 0.196 < 0.7.
-    [WARN] W.DOM.LOAD_PF_LOW  load/ld1895_load_b
-      Load 'ld1895_load_b' has power factor 0.0 < 0.7.
+    [WARN] W.DIV.LOAD_SYMMETRIC
+      11 of 12 loads share identical (p_nom, q_nom) — possible copy-paste symmetry.
   INFO:
+    [INFO] I.DIV.LOAD_CV_LOW
+      Load p_nom has very low coefficient of variation (0.0) — all loads nearly identical.
+    [INFO] I.DIV.LOAD_PF_DSS_DEFAULT
+      Load power factor mean 0.88 is within 1% of the OpenDSS default PF=0.88 (CV=0.0) — reactive power may not have been explicitly set.
     [INFO] I.DIV.LOAD_UNIFORM_MODEL
       All 12 loads use the constant_power model — no load exercises voltage dependence (ZIP/exponential); the case does not test voltage-dependent load behaviour.
     [INFO] I.DIV.LOAD_UNIFORM_CONFIG
       All 12 loads share the 'SINGLE_PHASE' configuration — no connection diversity.
+    [INFO] I.DIV.LOAD_PHASE_BALANCED
+      Galvanic zone anchored at 'b1006' has balanced aggregate load across 3 phase(s) (max spread 0.0%) — the network is effectively balanced and a single-phase equivalent would suffice.
     [INFO] I.OPS.UNLOADED_PHASE
       Galvanic zone anchored at bus 'sourcebus' has no load connected to phase terminal 'a'.
     [INFO] I.OPS.UNLOADED_PHASE
@@ -254,6 +266,8 @@
       Linecode 'uglv_240al_xlpe/nyl/pvc_ug_4w_bundled' B_to_block has positive mutual susceptance — deviates from the Maxwell sign pattern; typical of screen-eliminated/bundled cable reductions, otherwise a sign-convention suspect.
     [INFO] I.PROV.LINE_MODEL_UNIFORM
       All 22 line-model definition(s) use a single, consistent model: symmetric π. Every branch carries a symmetric π shunt — line charging is represented consistently across the network.
+    [INFO] I.PROV.DSS_DEFAULT_PF
+      12 load(s) have power factor exactly 0.88 — the OpenDSS default; reactive demand was likely never specified.
     [INFO] I.PROV.IMPEDANCE_TRANSFORM_KR
       9 three-wire linecode(s) match the impedance signature of Kron reduction — neutral row/column eliminated from the original four-wire Carson impedance matrix via Schur complement. Exact when every neutral is perfectly grounded; approximate with finite grounding. Zero-sequence behaviour is not captured by the three-wire representation.: moon_hv_oh_3wire, pluto_lv_oh_3wire, ughv_240al_triplex_ug_3w_bundled, ughv_240cu_hdpe/nyl/pvc_ug_3w_bundled, ughv_240cu_xlpe/nyl/pvc_ug_3w_bundled, ughv_400al_triplex_ug_3w_bundled, ughv_400al_xlpe/nyl/pvc_ug_3w_bundled, ughv_95al_xlpe/nyl/pvc_ug_3w_bundled, uglv_240al_xlpe/nyl/pvc_ug_3w_bundled.
     [INFO] I.PROV.LINE_SWITCH_LIKE  line/for_energymeter
@@ -278,6 +292,4 @@
       4 group(s) of linecodes share identical R_series_1_1/X_series_1_1.
     [INFO] I.BENCH.AUGMENTATION
       Case needs augmentation to be a non-trivial OPF benchmark: no priced slack or generator — the generation-cost objective is degenerate; add a cost to the voltage source at the source bus (augment_case does this by default) or dispatchable DERs; no voltage magnitude bounds on any bus — voltage is unconstrained; add v_min/v_max (phase-to-ground); no phase-to-neutral or sequence voltage bounds (vpn_*/vpos_*) — sequence bounds also improve solver robustness for 4-wire OPF.
-    [INFO] I.BENCH.LOAD_ZERO_PNOM
-      1 load(s) have p_nom = 0 on all phases — these loads impose no real power demand: ld1895_load_b.
 

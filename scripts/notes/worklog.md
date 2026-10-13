@@ -125,3 +125,26 @@ ALSO NOTED, needs following up with supervisors:
 - Note: overvoltage is computed with Volt-Watt removed (P fixed at the issued limit); in reality Volt-Watt would curtail instead.
 
 **Open questions for supervisors:** customer vs all-phases limits; equal vs max-total allocation; origin/realism of my modified Loads.dss (vs original 1 kW, pf 0.88); AI in scope / title.
+
+## 13 Oct 2026 (evening) – Switched to ORIGINAL CSIRO loads; code review fixes
+
+- Loads.dss: all 12 loads set to kw=1 kvar=0.539743 (pf 0.88), the original CSIRO setting
+  (Master `batchedit load..* kw=1` + OpenDSS default pf). My earlier edited values (0–4 kW, one load
+  5 kvar) had no documented source and caused a large neutral shift at b1754.
+- Independent code review (against BMOPFTools b7aa9a1 / PowerOptLab 953e45c): no bug in DOE maths;
+  verify pins P exactly. Fixes applied: source-voltage guard, original-load guard, customer = inverter
+  points guard, per-house binding report (S/5 kVA), helpers moved to scripts/bmopf/doe_common.jl,
+  "undeliverable" labelling + counterfactual voltage with inverter rating relaxed (same Volt-VAr Q in var).
+
+**Clean DOEs (original loads, customer mode, equal allocation)**
+- 1.00 pu: 4.906 kW/house, max 245.78 V → limited by inverter rating (5 kVA with Volt-VAr absorption).
+- 1.03 pu: 4.529 kW/house, max 252.71 V (b828 b-n) → limited by inverter rating, S/5kVA = 1.000.
+
+**Dirty DOEs (1.03 pu; 22 service segments ugsc_16cu ↔ uglv_4cu, R ×3.07)**
+- CASE A (truth 4 mm², records 16 mm²): correct 2.734 kW (voltage-limited, 253.00 V b828 b-n, S/5kVA 0.698);
+  issued 4.529 kW (+65.6 %); undeliverable within 5 kVA under Volt-VAr; counterfactual 255.12 V (+2.12 V).
+- CASE B (truth 16 mm², records 4 mm²): correct 4.529 kW (inverter-limited); issued 2.734 kW (−39.6 %); 251.80 V.
+- Hand check: Q(253 V) = 2.167 kvar; S = sqrt(2.734² + 2.167²) = 3.488 kVA = 0.698 × 5 kVA ✔.
+
+**Design question for supervisors:** 5 kVA inverter with 5 kW PV (my PVSystems.dss) makes the clean DOE
+inverter-limited at 1.03 pu; Geth's australian_pv uses 6 kVA with 5 kW, which would make it voltage-limited.
