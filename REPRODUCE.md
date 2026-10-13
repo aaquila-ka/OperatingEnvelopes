@@ -1,7 +1,7 @@
 # How to reproduce the thesis results
 
 Thesis: Learning dynamic operating envelopes from imperfect data (UQ REIT7841, Aaquila Konnimera Akbar)
-Last verified: 13 Oct 2026, git commit d2b4d06
+Results below were produced and checked on 13 Oct 2026 at git commit d2b4d06.
 
 ## 1. Software (locked)
 
@@ -42,7 +42,7 @@ Start Julia from C:\thesis\OperatingEnvelopes with `julia +1.11 --project=bmopf`
 | 2 | `include("scripts/bmopf/validate_network_pinned.jl")` | BMOPFTools vs OpenDSS with the same pinned PV outputs | results/pf_validation_lv3*.csv |
 | 3 | `include("scripts/bmopf/doe_clean_snapshot.jl")` | correct DOEs (the answer key) at 1.00 and 1.03 pu | results/doe_clean_snapshot.csv |
 | 4 | `include("scripts/bmopf/doe_dirty_snapshot.jl")` | wrong cable records, Case A and Case B | results/doe_dirty_snapshot.csv |
-| 5 | `include("scripts/bmopf/doe_severity_sweep.jl")` | resistance scaled by k = 1 to 3.07 | results/doe_severity_sweep.csv |
+| 5 | `include("scripts/bmopf/doe_severity_sweep.jl")` | service-cable resistance scaled by k = 1 to 3.07 | results/doe_severity_sweep.csv |
 | 6 | `include("scripts/bmopf/opendss_check_caseA.jl")` | independent OpenDSS check of the Case A over-voltage | printed only |
 
 The ~46 "from_dss: ... could not be represented" warnings at import are expected (OpenDSS fields like `units` that BMOPF does not need).
@@ -53,11 +53,14 @@ The ~46 "from_dss: ... could not be represented" warnings at import are expected
 |---|---|
 | BMOPFTools vs OpenDSS, phase-to-neutral voltage | within 0.11 V at all 55 buses |
 | BMOPFTools vs OpenDSS, neutral voltage | within 0.024 V |
-| Clean DOE, 1.00 pu | 4.91 kW per customer, max 245.8 V, inverter-limited |
+| Clean DOE, 1.00 pu | 4.906 kW per customer, max 245.8 V, inverter-limited |
 | Clean DOE, 1.03 pu | 4.529 kW per customer, max 252.7 V, inverter-limited |
-| Case A (truth 4 mm², records 16 mm²) | correct 2.734 kW, issued 4.529 kW, +65.6 %; counterfactual 255.12 V (BMOPFTools), 255.2 V (OpenDSS) |
-| Case B (truth 16 mm², records 4 mm²) | correct 4.529 kW, issued 2.734 kW, -39.6 % |
-| Sweep | under 0.5 % up to k = 1.25; +10.9 % at k = 1.5; +30.5 % at k = 2 |
+| Case A (truth 4 mm², records 16 mm²) | correct 2.734 kW, issued 4.529 kW, +65.6 %; undeliverable within 5 kVA; counterfactual 255.12 V (BMOPFTools), 255.2 V (OpenDSS) at b828 b-n |
+| Case B (truth 16 mm², records 4 mm²) | correct 4.529 kW, issued 2.734 kW, -39.6 %; true street 251.80 V |
+| Sweep, k = 1.25 | +0.5 %, inverter-limited, 252.99 V, delivered |
+| Sweep, k = 1.5 | +10.9 %, voltage-limited, 253.27 V, delivered (real over-voltage) |
+| Sweep, k = 2.0 | +30.5 %, voltage-limited, 253.81 V, delivered (real over-voltage) |
+| Sweep, k = 2.5 and 3.07 | +47.9 % and +65.4 %, undeliverable within 5 kVA (counterfactual 254.46 V and 255.12 V) |
 
 ## 5. Main modelling choices
 
@@ -71,9 +74,11 @@ The ~46 "from_dss: ... could not be represented" warnings at import are expected
 1. Resistance ratio: the dataset's line codes give 3.07x for 4 vs 16 mm² copper; IEC 60228 maximum DC values give about 4.0x. The thesis must say which is used and why.
 2. Network losses differ by about 7 % between BMOPFTools and OpenDSS (voltages agree). Likely bookkeeping or switch impedance; not yet traced.
 3. Only one loading snapshot, one feeder, 5 kVA inverters, equal allocation.
-4. Case A issued DOE cannot actually be delivered within 5 kVA under Volt-VAr; the 255 V figure is a counterfactual with the rating relaxed.
+4. For large errors (Case A, k = 2.5 and 3.07) the issued DOE cannot be delivered within 5 kVA under Volt-VAr, so the over-voltage there is a counterfactual with the rating relaxed. For moderate errors (k = 1.5 and 2.0) the issued DOE is delivered and the over-voltage is real (253.27 V and 253.81 V).
 5. Transformer xhl = 0.0391918 comes from the original dataset (= sqrt(0.04^2 - 0.008^2)); left unchanged.
 6. Using customer-only voltage limits was needed because applying them on every phase was infeasible at bus b1754 phase a (no customer there).
+7. The severity sweep scales only the service cables' own resistance (diagonal R). Case A swaps the whole line code (R, X and mutual terms), so k = 3.07 gives 2.739 kW (+65.37 %) versus Case A 2.734 kW (+65.6 %). The 0.2 % difference is expected.
+8. The clean and sweep CSVs do not yet store the voltage at each customer or whether each DOE passed an independent check; those columns are added in a later step.
 
 ## 7. Where the history is
 
