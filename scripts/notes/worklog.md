@@ -148,3 +148,13 @@ ALSO NOTED, needs following up with supervisors:
 
 **Design question for supervisors:** 5 kVA inverter with 5 kW PV (my PVSystems.dss) makes the clean DOE
 inverter-limited at 1.03 pu; Geth's australian_pv uses 6 kVA with 5 kW, which would make it voltage-limited.
+
+**Re-validation with original loads (13 Oct, evening)**
+- Loads identical in both tools (12 × 1.000 kW, 0.540 kvar).
+- (B) OpenDSS InvControl = AS/NZS 4777.2 curves on PHASE-TO-GROUND voltage with reactive priority
+  (P = min(VW cap, sqrt(5² − Q²))): worst gap 0.000 kW / 0.000 kvar on all 12 PVs.
+- (A) pinned network: phase-to-neutral |diff| mean 0.071 V, max 0.104 V (b2740 b-n); neutral max 0.024 V.
+  Earlier 0.22 V gap was mostly due to my odd edited loads.
+- OPEN: losses OpenDSS 386.9 W vs BMOPF 359.0 W (−7.2 %, same ratio as before). Likely loss bookkeeping
+  (BMOPF counts lines + transformers only; OpenDSS also counts earthing reactors/switches) and OpenDSS
+  switch=y default impedance. Test later: compare per-element losses.
