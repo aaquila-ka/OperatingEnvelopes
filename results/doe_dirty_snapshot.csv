@@ -1,0 +1,3 @@
+case,correct_limit_kW,wrong_records_limit_kW,real_max_vpn_V,where
+CASE A: truth 4 mm2, records say 16 mm2,2.547493,4.123875,254.6550,b828 b-n
+CASE B: truth 16 mm2, records say 4 mm2,4.123875,2.547493,252.2351,b2190 a-n

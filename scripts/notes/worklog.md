@@ -100,3 +100,28 @@ ALSO NOTED, needs following up with supervisors:
 - FINDING: OpenDSS InvControl evaluates the curves on PHASE-TO-GROUND voltage. ld626: V_pg 259.71 V gives P = 1.163 kW (matches); V_pn 258.79 V would give 1.693 kW. ld2186: V_pg 260.01 V gives P cut to 1.0 kW. This thesis uses phase-to-neutral (PN_PER_PHASE).
 
 **Operating point note:** with source at 1.07 pu every LV node sits about 259–262 V phase-to-neutral, so all inverters are at full Volt-VAr absorption (−3 kvar) and Volt-Watt at or near 20 % output. Source voltage choice must be settled before generating DOEs.
+
+## 13 Oct 2026 (late afternoon) – First clean and dirty DOEs (Aims 2, 4)
+
+**Setup**
+- Source set back to 1.00 pu in Master.dss (original CSIRO value; 1.07 pu was my own earlier choice and made every bus exceed 253 V before any export). Seminar figure 260.91 V = 1.07 × 243.9 V, i.e. just the no-load LV voltage at 1.07 pu.
+- `batchedit load..* kw=1` is commented out in my Master.dss, so OpenDSS and BMOPF use the same Loads.dss values (load-mismatch hypothesis ruled out).
+- Pinned validation at 1.00 pu with PV near full export: max gap 0.20 V, mean 0.066 V; PV P = sqrt(5² − Q²) exactly (5 kVA rating). OPEN: BMOPF losses consistently 7.0 % below OpenDSS (ratio 0.930 at both 1.07 and 1.00 pu).
+- DOE tool: PowerOptLab commit 953e45c (the version tested against BMOPFTools b7aa9a1). Equal allocation, export, security = bound_point, export_max 5 kW, PVs keep AS/NZS 4777.2 Volt-VAr/Volt-Watt (PN).
+
+**Where the 207–253 V limit is applied (important modelling choice)**
+- "all": every phase of every LV bus. At 1.03 pu the binding point was b1754 phase a, where no customer is connected (neutral shift from unbalanced load), not PV export. With 4 mm² services this point is above 253 V even at zero export → DOE infeasible.
+- "customer" (DEFAULT): only on each customer's own phase at their connection (statutory point of supply). Reported highest voltage anywhere for transparency.
+
+**Clean DOEs (customer mode)**
+- 1.00 pu: 4.890 kW per house (limited by 5 kVA inverter rating: Q = 1.043 kvar at 246.26 V → P = 4.890 kW). Voltage not binding.
+- 1.03 pu: 4.124 kW per house, customer max 253.00 V (b2190 a-n), anywhere max 253.14 V (b1754 a-n).
+- (all-phases mode, 1.03 pu: 3.329 kW per house.)
+
+**Dirty DOEs (1.03 pu, customer mode; services ugsc_16cu ↔ uglv_4cu, R ×3.07, 22 segments)**
+- CASE A (truth 4 mm², records 16 mm²): correct 2.547 kW, issued 4.124 kW (+61.9 %); exporting the issued limit on the true street gives 254.65 V at b828 b-n (+1.65 V over 253 V).
+- CASE B (truth 16 mm², records 4 mm²): correct 4.124 kW, issued 2.547 kW (−38.2 % lost); 252.24 V.
+- Consistency checks passed (A-truth = B-dirty, B-truth = A-dirty = clean).
+- Note: overvoltage is computed with Volt-Watt removed (P fixed at the issued limit); in reality Volt-Watt would curtail instead.
+
+**Open questions for supervisors:** customer vs all-phases limits; equal vs max-total allocation; origin/realism of my modified Loads.dss (vs original 1 kW, pf 0.88); AI in scope / title.
