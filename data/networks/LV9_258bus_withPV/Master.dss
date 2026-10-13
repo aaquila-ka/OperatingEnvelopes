@@ -1,0 +1,18 @@
+new circuit.lv9_258bus angle=-30.0000000000 basekv=11.0000000000 pu=1.00 phases=3 bus1=sourcebus model=ideal
+
+set defaultbasefrequency=50.0000000000
+set basefrequency=50.0000000000
+
+redirect Linecodes.dss
+redirect lines.dss
+redirect Loads.dss
+redirect Transformers.dss
+redirect Switches.dss
+redirect Groundings.dss
+redirect PVSystems.dss
+
+new line.for_energymeter lineCode=ughv_400al_triplex_ug_4w_bundled bus1=sourcebus.1.2.3.0 bus2=B1690.1.2.3.4 length=0.0001 units=km phases=4
+New EnergyMeter.Source     Element= line.for_energymeter  Terminal=1
+
+Set MaxControlIter=100
+Set tolerance=0.00001
