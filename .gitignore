@@ -4,14 +4,12 @@
 *.jl.mem
 /docs/build/
 
-# Results and data (too large for Git)
-results/
+# Large generated outputs (regenerable from scripts, seed-fixed)
+results/large/
 data/raw/
-*.csv
 *.h5
 *.hdf5
 
 # OS and editor
 .DS_Store
 Thumbs.db
-.vscode/
