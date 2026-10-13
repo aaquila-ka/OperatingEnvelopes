@@ -1,7 +1,7 @@
 # How to reproduce the thesis results
 
 Thesis: Learning dynamic operating envelopes from imperfect data (UQ REIT7841, Aaquila Konnimera Akbar)
-Last updated 13 Oct 2026, after an independent review. Results produced at git commit ae2dc4f.
+Last updated 13 Oct 2026, after two independent reviews. Main results produced at git commit ae2dc4f; robust and sharing-rule results added afterwards (see git log).
 
 ## 1. Software (locked)
 
@@ -37,7 +37,7 @@ House usage for the day runs: `data/profiles/TeamNando_OE1_LoadShapes.txt` (Team
 
 ## 3. Run order
 
-Start Julia from C:\thesis\OperatingEnvelopes with `julia +1.11 --project=bmopf`. For steps 7-11, first run `using Logging; disable_logging(Logging.Warn)` to hide the repeated import warnings, and use a fresh Julia session for each script.
+Start Julia from C:\thesis\OperatingEnvelopes with `julia +1.11 --project=bmopf`. For steps 7-13, first run `using Logging; disable_logging(Logging.Warn)` to hide the repeated import warnings, and use a fresh Julia session for each script.
 
 | # | Command | What it does | Output |
 |---|---|---|---|
@@ -52,6 +52,8 @@ Start Julia from C:\thesis\OperatingEnvelopes with `julia +1.11 --project=bmopf`
 | 9 | `include("scripts/bmopf/doe_timeseries.jl")` then `run_timeseries()` | full day, 48 half-hours, real profiles, sun-limited | results/doe_timeseries.csv, results/timeseries_profile_map.csv |
 | 10 | (same session as 9) `run_record_errors_at(25; n_draws = 20)` | the step-7 draws at the 12:00 loads | results/doe_record_errors_1200.csv |
 | 11 | `include("scripts/bmopf/doe_source_sweep.jl")` then `run_source_sweep()` | Case A at 1.00-1.035 pu | results/doe_source_sweep.csv |
+| 12 | `include("scripts/bmopf/doe_robust.jl")` then `run_robust()` | hedge in advance vs check records first | results/doe_robust.csv |
+| 13 | `include("scripts/bmopf/doe_fairness.jl")` then `run_fairness()` | equal, proportional and max-min sharing rules | results/doe_fairness_summary.csv, results/doe_fairness_customers.csv |
 
 The ~46 "from_dss: ... could not be represented" warnings at import are expected (OpenDSS fields like `units` that BMOPF does not need).
 
@@ -67,6 +69,8 @@ The ~46 "from_dss: ... could not be represented" warnings at import are expected
 | Record errors, 12:00 loads | scatter 10 %: -5.7 to +9.3 %, ≤253.20 V; 5 or 11 wrong: up to +117 %, ≤255.15 V |
 | Full day, 1.03 pu | clean DOE 4.02-4.48 kW, voltage-limited at all 48 steps; gap 2.0-2.35 kW; sun-limited over-voltage 10:00-16:30, peak 255.02 V at 11:30 |
 | Source sweep, 12:00 | gap 0.14 / 0.17 / 0.71 / 1.63 / 2.29 / 0.60 kW at 1.00 / 1.01 / 1.02 / 1.025 / 1.03 / 1.035 pu |
+| Robust, 12:00 | hedge b = 5 / 10 / 20 %: 4.124 / 4.004 / 3.785 kW (scenario check identical); check records: 1.959 kW (none) -> 2.428 (1) -> 4.253 (11) |
+| Sharing rules, l_3432 wrong | equal: 12 of 12 limits change, 21.55 kW (snapshot); proportional: 1 of 12, 1.85 kW; realised 254.60 V at b828 b-n under every rule |
 
 ## 5. Main modelling choices
 
@@ -74,7 +78,7 @@ The ~46 "from_dss: ... could not be represented" warnings at import are expected
 - DOE = limit on the inverter's AC output (gross PV), not net export at the meter.
 - DOE allocation: equal export limit for every customer (PowerOptLab fairness = :equal, security = :bound_point).
 - Inverters: 5 kVA, Volt-VAr and Volt-Watt on phase-to-neutral voltage, reactive priority.
-- Source voltage: 1.03 pu for the main results (also used in Geth's PowerOptLab LV3 study); 1.00-1.035 pu in the source sweep.
+- Source voltage: 1.03 pu for the main results (also used in Geth's PowerOptLab LV3 study, there with 1 % source unbalance); 1.00-1.035 pu in the source sweep.
 - Cable error: 22 service-cable segments; 16 mm² vs 4 mm² copper from the dataset's own line codes (resistance ratio 3.07).
 - Two readings of what an issued DOE does on the true street: bound-point (everyone exports exactly the DOE, Volt-Watt off; worst case) and realised (everyone may export up to the cap, all inverter laws on; physical). Day runs also cap export by the sun available.
 
@@ -82,15 +86,18 @@ The ~46 "from_dss: ... could not be represented" warnings at import are expected
 
 1. Source voltage drives the size of the error (section 4, source sweep). Team-Nando's MV profile is about 0.99-1.00 pu; the LV operating point depends on the transformer tap. Always quote the error together with the source voltage.
 2. Resistance ratio: the dataset's 16 mm² line code (1.49 Ω/km) is about 30 % above the IEC 60228 20 °C maximum (1.15 Ω/km), while its 4 mm² code (4.57 Ω/km) is close to IEC (4.61). The 3.07 ratio is therefore conservative; with 4.0 the reviewer found +149 % and 256.7 V at 12:00 (bound-point).
-3. Equal allocation: one critical customer sets everyone's DOE, so one wrong record changes all 12 limits; but physically only the customers on wrong cables go over 253 V. Other fairness rules are not yet tested.
+3. Equal allocation is the main rule; one critical customer sets everyone's DOE. Proportional and max-min are tested in doe_fairness.jl: they change who absorbs the error, not the physical over-voltage.
 4. One feeder, one day, one set of 12 profiles, 5 kVA inverters.
 5. Network losses differ by about 7 % between BMOPFTools and OpenDSS (voltages agree). Not yet traced.
-6. Bound-point "delivered" vs realised: in a few cases the realised run trims tens of watts (5 kVA rating with reactive priority) where the bound-point check said delivered; this is within BMOPF's smoothing of the Volt-VAr corners.
+6. Smoothing: BMOPF smooths the Volt-Watt corner at 253 V (softplus, about 0.5 V wide), which caps an inverter at about 4.8 kW at exactly 253 V. This overstates realised curtailment by about 5 % when many customers sit just above 253 V (all 22 wrong: 1.86 vs 1.78 kW with the exact curve); voltages are unaffected. Small trims in the inverter-limited snapshot come from the 5 kVA circle with reactive priority. curtail_kW mixes both causes.
 7. The severity sweep (file 3) scales only diagonal R; k = 3.07 gives 2.739 kW vs the full line-code swap 2.734 kW (0.2 %).
 8. Customer counts above 253 V include marginal cases (253.01 V); read them with the voltage.
 9. Case B is the mirror of Case A (lost % = 1/(1 + over-promise) - 1), not separate evidence.
 10. Transformer xhl = 0.0391918 comes from the original dataset (= sqrt(0.04^2 - 0.008^2)); left unchanged.
 11. The older results files doe_dirty_snapshot.csv and doe_severity_sweep.csv report bound-point voltages only; the realised values for the same cases are in doe_critical_cables.csv, doe_record_errors.csv and doe_source_sweep.csv.
+12. The DOE is very slightly non-monotone in a single cable's resistance: a thicker cable lowers that customer's voltage, so its inverter absorbs less reactive power, which nudges its neighbours. Effect up to 0.02 kW (0.7 %); reproduced in OpenDSS; disappears with Volt-VAr off. So 'thinnest cable everywhere' is the worst case only to within about 0.02 kW.
+13. The size of the error is not monotone in source voltage: largest around 1.025-1.03 pu, smaller in kW at 1.035 pu where the clean DOE collapses.
+14. The day results come from one partly cloudy day (sun peak 3.6 kW per house).
 
 ## 7. Where the history is
 

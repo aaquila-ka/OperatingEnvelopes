@@ -1,6 +1,6 @@
 # Data card: clean vs dirty DOE results (LV3 feeder)
 
-Last updated 13 Oct 2026 (after an independent review; see "How much to trust it").
+Last updated 13 Oct 2026 (after two independent reviews; see "How much to trust it").
 
 ## What this is
 
@@ -39,7 +39,7 @@ Values: 4.906 kW at 1.00 pu, 4.529 kW at 1.03 pu; both limited by the inverter's
 
 Case A (truth 4 mm², records 16 mm², all 22 service cables) and Case B (reverse), 1.03 pu.
 Columns: case, correct_limit_kW, issued_limit_kW, true_street_max_vpn_V (bound-point), where, note.
-Case A +65.6 % (bound-point 255.12 V counterfactual; realised with Volt-Watt 254.60 V, see file 6). Case B -39.6 % (Case B is the mirror of Case A).
+Case A +65.6 % (bound-point 255.12 V counterfactual; realised with Volt-Watt 254.60 V with all 12 customers above 253 V and 1.86 kW curtailed, see doe_fairness_summary.csv, equal rule). Case B -39.6 % (Case B is the mirror of Case A).
 
 ## File 3: results/doe_severity_sweep.csv (bound-point only, older)
 
@@ -81,7 +81,7 @@ Meaning: in the inverter-limited snapshot small scatter is hidden; at a voltage-
 
 One cable at a time is really 4 mm² (other 21 correct), 1 kW snapshot, 1.03 pu. Sorted, most harmful first.
 Columns: segment, bus_from, bus_to, length (m), correct_kW, correct_binding, correct_status, issued_kW, gap_kW, overpromise_pct, boundpoint_V_noVW, boundpoint_note, realised_V_VW, n_customers_over_253, curtail_kW.
-Result: the 12 customer service cables each cause an error (+3.9 % to +65.7 %); the 10 dead-end stubs with no customer cause none (they carry no current). Customer Ld1291's cable (l_3432, bus B828, 29.5 m) alone gives the same DOE as all 22 wrong (+65.7 %) and a realised 254.60 V (OpenDSS 254.61 V), but only that one customer goes above 253 V (all 22 wrong: up to 8). At this operating point the harm follows the customer's cable length and voltage headroom (n = 12, R² 0.98, leave-one-out 0.96).
+Result: the 12 customer service cables each cause an error (+3.9 % to +65.7 %); the 10 dead-end stubs with no customer cause none (they carry no current). Customer Ld1291's cable (l_3432, bus B828, 29.5 m) alone gives the same DOE as all 22 wrong (+65.7 %) and a realised 254.60 V (OpenDSS 254.61 V), but only that one customer goes above 253 V (all 22 wrong: all 12 customers, 254.60 V, 1.86 kW curtailed). At this operating point the harm follows the customer's cable length and voltage headroom (n = 12, R² 0.98, leave-one-out 0.96).
 
 ## File 7: results/doe_timeseries.csv
 
@@ -100,7 +100,7 @@ One full day, 48 half-hours, real usage per customer (file 8), 1.03 pu. Case A =
 | A_pv_V_VW, A_pv_n_over_253, A_pv_curtail_kW | realised, limited by the sun: **the realistic numbers** (NaN at night = no export) |
 | B_lost_pct_mirror | Case B, mirror of Case A: 1/(1 + over-promise) - 1 |
 
-Rows: 48. Clean DOE 4.02-4.48 kW, voltage-limited at every step (at 1.03 pu). Issued DOE too generous by 2.0-2.35 kW all day. Realistic (sun-limited) over-voltage in 13 half-hours, 10:00-16:30, peak 255.02 V at 11:30, up to 10 of 12 customers above 253 V, no curtailment needed. Mornings, evenings, night: no over-voltage. If every customer could export the full DOE: 254.6-255.3 V.
+Rows: 48. Clean DOE 4.02-4.48 kW, voltage-limited at every step (at 1.03 pu). Issued DOE too generous by 2.0-2.35 kW at every half-hour (meaningful for PV only in daylight). One partly cloudy day (sun peak 3.6 kW per house); on a clear day the sun-limited values move towards the worst-case column. Realistic (sun-limited) over-voltage in 13 half-hours, 10:00-16:30, peak 255.02 V at 11:30, up to 10 of 12 customers above 253 V, no curtailment needed. Mornings, evenings, night: no over-voltage. If every customer could export the full DOE: 254.6-255.3 V.
 
 ## File 8: results/timeseries_profile_map.csv
 
@@ -121,16 +121,41 @@ Columns: setting, source_pu, clean_kW, clean_binding, A_correct_kW, A_gap_kW, A_
 | 1.03 pu | 4.25 kW (voltage) | 2.29 kW | +117 % | 254.3 V (9 over) |
 | 1.035 pu | 1.37 kW (voltage) | 0.60 kW | +78 % | 253.5 V (6 over) |
 
-Meaning: the same record error is harmless when the feeder has voltage headroom and serious when it is near its limit, which is exactly when DOEs are needed.
+Meaning: the same record error is harmless when the feeder has voltage headroom and largest around the change from inverter-limited to voltage-limited (about 1.025-1.03 pu here), which is exactly when DOEs start to matter. When the feeder is almost full (1.035 pu) the clean DOE itself collapses, so the gap in kW shrinks again.
+
+## File 10: results/doe_robust.csv
+
+What a utility can do, 1.03 pu, 1 kW snapshot and 12:00 loads.
+Columns: setting, source_pu, part, param, verified_segments, clean_kW, all_4mm2_kW, safe_DOE_kW, cost_vs_clean_pct, scenario_check_kW, status.
+- Part A (`A_hedge`, param = b): DOE safe if every service cable's resistance is up to b higher. Cost vs clean: 0.1 / 0.2 / 0.4 % (snapshot) and 3.0 / 5.8 / 11.0 % (12:00) for b = 5 / 10 / 20 %. The scenario check (one envelope valid for R x (1-b), R, R x (1+b) and a mixed case with l_3432 at +b and all others at -b) gives the same value to 3 decimals.
+- Part B (`B_verify_<order>`, param = k): the 12 customer cables are checked one by one; unchecked ones are assumed 4 mm². Orders: longest_first, opf_ranked (from file 6), shortest_first. At 12:00 the safe DOE goes 1.96 kW (k = 0) -> 2.43 kW (k = 1) -> about 2.55 kW (k = 7-9) -> 3.12 kW (k = 10, opf_ranked; 2.55 longest_first) -> 4.25 kW (k = 11). Shortest_first recovers nothing until k = 12. Under equal allocation, checking pays off only when (nearly) all customer cables are checked.
+- Note: the DOE is very slightly non-monotone in single-cable resistance (Volt-VAr coupling between customers, confirmed in OpenDSS), so a few steps drop by up to 0.02 kW.
+
+## Files 11 and 12: results/doe_fairness_summary.csv and results/doe_fairness_customers.csv
+
+Three sharing rules (PowerOptLab fairness :equal, :proportional, :max_min; max_min is two-stage: raise the minimum, then the total), 1.03 pu, 1 kW snapshot and 12:00 loads. Cases: only l_3432 wrong (Ld1291), only l_4155 wrong (Ld1668), all 22 wrong.
+Summary columns: setting, source_pu, policy, case, issued_total/min/max_kW, correct_total/min_kW, n_customers_changed (limit changes by > 0.05 kW), total_gap_kW, max_gap_kW, max_gap_customer, realised_V_VW, n_customers_over_253, curtail_kW, customers_over_253 (bus and phase), statuses.
+Customer file: setting, source_pu, policy, case, customer, issued_kW, correct_kW, gap_kW (216 rows: per-customer labels for learning).
+
+| One wrong record (l_3432) | Equal | Proportional | Max-min |
+|---|---|---|---|
+| Customers whose correct limit changes | 12 of 12 | 1 of 12 | 8-10 of 12 |
+| Total wrongly allocated export | 21.6 kW (snapshot), 27.5 kW (12:00) | 1.9 / 2.4 kW (about 12x less) | 14.3 / 18.8 kW |
+| Affected customer's correct limit | 2.73 / 1.96 kW | 2.68 / 1.88 kW (lower) | 2.75 / 1.98 kW |
+| Realised outcome (same for all rules) | 254.60 V / 255.15 V at bus B828 phase b only; about 0.46-0.49 kW curtailed | same | same |
+
+Meaning: the safety harm of one wrong record is local and the same under every rule (the wrongly recorded customer's voltage rises). The rule only decides whose limits absorb the correction: everyone's under equal, only the affected customer's under proportional (who then carries all of it). For a mild cable (l_4155) at 12:00 no customer exceeds 253 V under any rule. When all 22 cables are wrong the error spreads under every rule, and proportional gives more curtailment (3.3 vs 0.9 kW at 12:00). Proportional raises total clean export at 12:00 (54.2 vs 51.0 kW) at the cost of a lower minimum limit (4.23 vs 4.25 kW); at the snapshot the gain is negligible (54.6 vs 54.4 kW).
 
 ## How much to trust it
 
 - Network model checked against OpenDSS: phase-to-neutral voltages within 0.11 V, neutral within 0.024 V.
 - Independent review (13 Oct 2026): a separate rebuild in OpenDSS (Python, not our code) reproduced the clean snapshot DOE (4.527 vs 4.529 kW, all customer voltages within 0.03 V), the l_3432 case (2.764 vs 2.734 kW; realised 254.61 vs 254.60 V) and the 12:00 step with 6 random sets of houses (clean 3.97-4.18 kW voltage-limited, Case A +97 to +119 %).
+- Second independent review: realised readings match an exact OpenDSS model within 0.03 V; sun-limited 11:30 and 12:00 values fall inside the OpenDSS ranges over 6 random profile sets; the non-monotone steps in file 10 reproduce in OpenDSS.
 - Seeded draws rerun identically (same Julia version).
+- curtail_kW mixes Volt-Watt and 5 kVA cutback, and BMOPF's smoothed Volt-Watt corner overstates it by about 5 % when many customers sit just above 253 V (all 22 wrong: 1.86 vs 1.78 kW with the exact curve). Voltages are not affected.
 - Limitations: see REPRODUCE.md section 6.
 
 ## Not in the data yet (planned)
 
-- Other allocation rules (e.g. proportional or max-min fairness), which would keep a wrong record from affecting every customer.
-- A second feeder; more days; the cable resistance ratio of about 4.0 from IEC 60228.
+- A second feeder; more days (including a clear-sky day); the cable resistance ratio of about 4.0 from IEC 60228.
+- Checking records under proportional allocation (expected to pay off customer by customer).

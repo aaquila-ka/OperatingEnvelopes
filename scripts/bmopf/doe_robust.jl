@@ -5,7 +5,11 @@
 #   may be up to b higher than recorded (b = 5, 10, 20 %) and issue the DOE that is safe for the
 #   worst case. Cost = export given up compared with the clean DOE.
 #   Check: the same robust DOE solved with PowerOptLab's scenario feature
-#   (one envelope valid for R x (1-b), R x 1, R x (1+b)) must equal the worst case R x (1+b).
+#   (one envelope valid for R x (1-b), R x 1, R x (1+b), and a MIXED case where the critical
+#   customer's cable l_3432 is +b and all others -b) should equal the uniform worst case R x (1+b).
+#   v2: mixed scenario added; Part B adds an OPF-ranked order (from doe_critical_cables.csv).
+#   Note (second review): the DOE is very slightly non-monotone in single-cable resistance
+#   (Volt-VAr coupling), so 'thinnest everywhere' is the worst case only to within ~0.02 kW.
 # Part B, "check the records first": the 12 customer service cables are verified one by one,
 #   longest first (a ranking a utility can make from its GIS without any OPF) or shortest first
 #   (contrast). Unverified customer cables are assumed to be the thinnest type (4 mm2), verified
@@ -22,6 +26,30 @@
 include(joinpath(pwd(), "scripts", "bmopf", "doe_timeseries.jl"))
 
 const RB_BOUNDS = [0.05, 0.10, 0.20]
+# ranking by harm from results/doe_critical_cables.csv (one cable at a time, 1 kW snapshot)
+const RB_OPF_ORDER = ["l_3432", "l_3656", "l_1243", "l_2791", "l_54", "l_2000",
+                      "l_4294", "l_3254", "l_2249", "l_504", "l_2641", "l_4155"]
+
+# each service segment its own copy of the line code with diagonal R x f[id] (default 1)
+function scale_R_each!(net, f::Dict)
+    ids  = re_service_ids(net)
+    base = net["linecode"][RE_SVC_LC]
+    for id in ids
+        fi = get(f, id, 1.0)
+        fi == 1.0 && continue
+        lc = deepcopy(base)
+        for key in collect(keys(lc))
+            m = match(r"^R_series_(\d+)_(\d+)$", key)
+            m === nothing && continue
+            m[1] == m[2] && (lc[key] = fi * Float64(lc[key]))
+        end
+        name = RE_SVC_LC * "_seg_" * id
+        net["linecode"][name] = lc
+        net["line"][id]["linecode"] = name
+    end
+    return net
+end
+mixed_f(b, ids) = Dict(id => (id == "l_3432" ? 1 + b : 1 - b) for id in ids)
 
 # all 22 service segments: diagonal R x f (one shared copy of the line code)
 function scale_R_all!(net, f)
@@ -79,8 +107,10 @@ function run_robust(; pu = RE_PU)
         println("   b      robust kW   cost vs clean   scenario check kW  [status]")
         for b in RB_BOUNDS
             rob, _, _, rst = ts_doe(scale_R_all!(prep(make_net(pu)), 1 + b))
+            ids22 = re_service_ids(prep(make_net(pu)))
             chk, cst2 = doe_scenarios([scale_R_all!(prep(make_net(pu)), 1 - b), prep(make_net(pu)),
-                                       scale_R_all!(prep(make_net(pu)), 1 + b)])
+                                       scale_R_all!(prep(make_net(pu)), 1 + b),
+                                       scale_R_each!(prep(make_net(pu)), mixed_f(b, ids22))])
             cost = 100 * (rob / clean - 1)
             @printf("  %4.2f    %7.3f      %+7.1f %%        %7.3f          [%s]\n", b, rob, cost, chk, cst2)
             push!(rows, @sprintf("%s,%.3f,A_hedge,%.2f,,%.6f,%.6f,%.6f,%.3f,%.6f,%s",
@@ -90,7 +120,8 @@ function run_robust(; pu = RE_PU)
         net0 = prep(make_net(pu))
         ids  = customer_cables(net0)
         println("Part B: verify customer cables one by one (unverified = 4 mm2)")
-        for (oname, order) in (("longest_first", ids), ("shortest_first", reverse(ids)))
+        @assert Set(RB_OPF_ORDER) == Set(ids) "OPF ranking does not match the 12 customer cables"
+        for (oname, order) in (("longest_first", ids), ("opf_ranked", RB_OPF_ORDER), ("shortest_first", reverse(ids)))
             @printf("  order %s: %s\n", oname, join(order, " "))
             println("   k checked   safe DOE kW   cost vs clean")
             for k in 0:12
