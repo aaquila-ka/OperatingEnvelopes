@@ -97,6 +97,30 @@ Summary: scatter 5-10 % has no effect (max +0.3 %); scatter 20 % up to +3.8 % (4
 One cable at a time is really 4 mm2 (the other 21 correct). Same columns as file 2, plus segment, bus_from, bus_to, length (km). Sorted, most harmful first.
 Result: the 12 customer service cables each cause an over-promise (+3.9 % to +65.7 %); the 10 cables with no customer behind them cause none. The cable of customer Ld1291 (l_3432, bus B828, 29.5 m) alone gives the full Case A over-promise (+65.7 %). Among customer cables, the harm follows cable length and how close the customer already is to 253 V.
 
+## File 6: results/doe_timeseries.csv
+
+One full day, 48 half-hour steps. Each customer follows its own real usage profile (see file 7). Source fixed at 1.03 pu.
+
+| Column | Meaning | Unit |
+|---|---|---|
+| step, time | half-hour number 1-48 and its start time | - |
+| pv_shape | solar shape of the day, 0-1 (0 = no sun); for reference only, the DOE does not depend on it | - |
+| total_load_kW | sum of the 12 customers' usage at that half-hour | kW |
+| clean_kW, clean_binding, clean_max_vpn_V, clean_status | answer-key DOE (records correct), what limits it, highest customer voltage, solver status | kW / text / V |
+| A_correct_kW, A_binding, A_status | Case A: correct DOE when all 22 service cables are really 4 mm2 | kW / text |
+| A_overpromise_pct | clean DOE issued from 16 mm2 records vs correct: (clean - A_correct) / A_correct x 100 | % |
+| A_true_street_V, A_note | highest customer voltage when the issued DOE is exported on the 4 mm2 street; delivered or counterfactual | V / text |
+| B_lost_pct | Case B: DOE issued from 4 mm2 records on a 16 mm2 street vs correct: (A_correct - clean) / clean x 100 | % |
+| B_true_street_V, B_note | highest customer voltage in Case B | V / text |
+
+Rows: 48. Clean DOE 4.02-4.48 kW, voltage-limited at every step. Case A +87 % to +135 % (mean +117 %), real street 254.9-255.8 V, delivered in 45 of 48 steps. Case B -47 % to -58 % (mean -54 %).
+Note: with real (lower) usage the inverter buffer seen in the 1 kW snapshot disappears, so the snapshot understated the error.
+
+## File 7: results/timeseries_profile_map.csv
+
+Which real profile each customer uses (load, profile name in TeamNando_OE1_LoadShapes.txt, daily kWh). Picked with seed 20261013 from the 99 profiles.
+Source: Team-Nando OE1-Ideal, github.com/Team-Nando/OE1-Ideal, commit 96abbab, BSD-3 licence (data/profiles/TeamNando_OE1_LICENSE.txt). Anonymised Victorian smart-meter data, one day, 5-min P and Q, averaged to 30 min.
+
 ## How much to trust it
 
 - Network model checked against OpenDSS: phase-to-neutral voltages within 0.11 V, neutral within 0.024 V.

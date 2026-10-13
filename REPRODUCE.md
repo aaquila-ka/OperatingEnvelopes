@@ -32,6 +32,8 @@ First-time setup, from C:\thesis\OperatingEnvelopes in PowerShell:
 
 `scripts/bmopf/load_lv3.jl` also fixes the inverter settings after import (see the comments at the top of that file).
 
+House usage for the full-day run: data/profiles/TeamNando_OE1_LoadShapes.txt (Team-Nando OE1-Ideal, commit 96abbab, BSD-3).
+
 ## 3. Run order
 
 Start Julia from C:\thesis\OperatingEnvelopes with `julia +1.11 --project=bmopf`, then:
@@ -44,6 +46,12 @@ Start Julia from C:\thesis\OperatingEnvelopes with `julia +1.11 --project=bmopf`
 | 4 | `include("scripts/bmopf/doe_dirty_snapshot.jl")` | wrong cable records, Case A and Case B | results/doe_dirty_snapshot.csv |
 | 5 | `include("scripts/bmopf/doe_severity_sweep.jl")` | service-cable resistance scaled by k = 1 to 3.07 | results/doe_severity_sweep.csv |
 | 6 | `include("scripts/bmopf/opendss_check_caseA.jl")` | independent OpenDSS check of the Case A over-voltage | printed only |
+| 7 | `include("scripts/bmopf/doe_record_errors.jl")` then `run_record_errors(n_draws = 20)` | scatter and wrong-type record errors, 120 seeded draws | results/doe_record_errors.csv |
+| 8 | `include("scripts/bmopf/doe_critical_cables.jl")` then `run_critical_cables()` | one cable at a time is 4 mm2 | results/doe_critical_cables.csv |
+| 9 | `include("scripts/bmopf/doe_timeseries.jl")` then `run_timeseries()` | full day, 48 half-hours, real profiles | results/doe_timeseries.csv, results/timeseries_profile_map.csv |
+Tip: run `using Logging; disable_logging(Logging.Warn)` first to hide the repeated import warnings in steps 7-9, and run each of steps 7-9 in a fresh Julia session.
+
+
 
 The ~46 "from_dss: ... could not be represented" warnings at import are expected (OpenDSS fields like `units` that BMOPF does not need).
 
@@ -61,6 +69,9 @@ The ~46 "from_dss: ... could not be represented" warnings at import are expected
 | Sweep, k = 1.5 | +10.9 %, voltage-limited, 253.27 V, delivered (real over-voltage) |
 | Sweep, k = 2.0 | +30.5 %, voltage-limited, 253.81 V, delivered (real over-voltage) |
 | Sweep, k = 2.5 and 3.07 | +47.9 % and +65.4 %, undeliverable within 5 kVA (counterfactual 254.46 V and 255.12 V) |
+| Record errors | scatter 5-10 %: max +0.3 %; 2 wrong cables: mean +26.6 %; 5 or 11 wrong: mean +50 to +54 %, max +65.7 % |
+| Critical cables | 12 of 22 segments matter; l_3432 (customer Ld1291, bus B828) alone gives +65.7 % |
+| Full day | clean DOE 4.02-4.48 kW, voltage-limited at all 48 steps; Case A mean +117 %, up to 255.8 V |
 
 ## 5. Main modelling choices
 

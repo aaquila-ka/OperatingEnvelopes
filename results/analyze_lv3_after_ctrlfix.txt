@@ -3,7 +3,7 @@
   BMOPF NETWORK SUMMARY REPORT
 ──────────────────────────────────────────────────────────────────────
   Case name                     lv3_55bus
-  Generated                     2026-10-13 17:34:52
+  Generated                     2026-10-13 17:45:57
   Findings                      0 errors, 2 warnings, 29 info
   Convention                    MV_6.4kV: 4-wire; LV_250V: 4-wire; 14 grounding point(s); symmetric π-only line model
 
