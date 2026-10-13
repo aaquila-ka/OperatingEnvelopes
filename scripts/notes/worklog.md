@@ -222,3 +222,12 @@ inverter-limited at 1.03 pu; Geth's australian_pv uses 6 kVA with 5 kW, which wo
 **Open**
 - Cable ratio 4.0 (IEC); clear-sky day; checking records under proportional sharing; 7 % loss gap; second feeder.
 
+## 13 Oct 2026 (late): cable ratio, clear-sky day, checking under proportional sharing
+
+- Cable ratio (doe_ratio.jl): dataset 16 mm2 code is about 30 % above IEC 60228, so its 3.07 ratio is conservative. Diagonal R x 3.07 matches the 4 mm2 code swap within 0.005 kW. With IEC ratio 4.0: gap +0.35 kW (12:00: 2.29 -> 2.63 kW), realised peak +0.5-0.8 V (11:30 sun-limited: 255.02 -> 255.77 V).
+- Clear-sky day (doe_clearsky.jl, ASSUMED peak 0.85 x 5 kW, half-sine over the measured sun hours): over-voltage in 21 half-hours (07:30-17:30) vs 13 on the measured cloudy day; peak 255.22 V held by Volt-Watt and the 5 kVA rating; up to 12 customers; curtailment up to 0.61 kW.
+- Checking records under proportional sharing (doe_verify_proportional.jl): at 12:00 the safe total rises 64 -> 75 -> 84 -> 94 -> 100 % after 0/3/6/9/11 checks (OPF-ranked), and still rises in shortest-first order; under equal sharing it stays at 46 % until the last critical check. Trade-off: the unchecked customer keeps a low limit (about 1.9-2.1 kW).
+- Conclusion for "what should a utility do": hedge small resistance doubts in advance (3-11 %); check cable types, which pays off steadily only with proportional sharing.
+
+**Open**
+- 7 % loss gap between BMOPFTools and OpenDSS; second feeder; more days and profile sets.

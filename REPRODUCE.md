@@ -37,7 +37,7 @@ House usage for the day runs: `data/profiles/TeamNando_OE1_LoadShapes.txt` (Team
 
 ## 3. Run order
 
-Start Julia from C:\thesis\OperatingEnvelopes with `julia +1.11 --project=bmopf`. For steps 7-13, first run `using Logging; disable_logging(Logging.Warn)` to hide the repeated import warnings, and use a fresh Julia session for each script.
+Start Julia from C:\thesis\OperatingEnvelopes with `julia +1.11 --project=bmopf`. For steps 7-16, first run `using Logging; disable_logging(Logging.Warn)` to hide the repeated import warnings, and use a fresh Julia session for each script.
 
 | # | Command | What it does | Output |
 |---|---|---|---|
@@ -54,6 +54,9 @@ Start Julia from C:\thesis\OperatingEnvelopes with `julia +1.11 --project=bmopf`
 | 11 | `include("scripts/bmopf/doe_source_sweep.jl")` then `run_source_sweep()` | Case A at 1.00-1.035 pu | results/doe_source_sweep.csv |
 | 12 | `include("scripts/bmopf/doe_robust.jl")` then `run_robust()` | hedge in advance vs check records first | results/doe_robust.csv |
 | 13 | `include("scripts/bmopf/doe_fairness.jl")` then `run_fairness()` | equal, proportional and max-min sharing rules | results/doe_fairness_summary.csv, results/doe_fairness_customers.csv |
+| 14 | `include("scripts/bmopf/doe_ratio.jl")` then `run_ratio()` | cable ratio 3.07 (dataset) vs 4.0 (IEC) | results/doe_ratio.csv |
+| 15 | `include("scripts/bmopf/doe_clearsky.jl")` then `run_clearsky()` | clear-sky day (assumed peak 0.85) | results/doe_clearsky.csv |
+| 16 | `include("scripts/bmopf/doe_verify_proportional.jl")` then `run_verify_proportional()` | checking records under proportional vs equal sharing | results/doe_verify_proportional.csv |
 
 The ~46 "from_dss: ... could not be represented" warnings at import are expected (OpenDSS fields like `units` that BMOPF does not need).
 
@@ -70,6 +73,9 @@ The ~46 "from_dss: ... could not be represented" warnings at import are expected
 | Full day, 1.03 pu | clean DOE 4.02-4.48 kW, voltage-limited at all 48 steps; gap 2.0-2.35 kW; sun-limited over-voltage 10:00-16:30, peak 255.02 V at 11:30 |
 | Source sweep, 12:00 | gap 0.14 / 0.17 / 0.71 / 1.63 / 2.29 / 0.60 kW at 1.00 / 1.01 / 1.02 / 1.025 / 1.03 / 1.035 pu |
 | Robust, 12:00 | hedge b = 5 / 10 / 20 %: 4.124 / 4.004 / 3.785 kW (scenario check identical); check records: 1.959 kW (none) -> 2.428 (1) -> 4.253 (11) |
+| Cable ratio 4.0, 12:00 | correct 1.624 kW, gap 2.628 kW (+161.8 %), sun-limited 255.12 V (3.07: 1.959 kW, 254.29 V) |
+| Clear-sky day | 21 half-hours above 253 V (07:30-17:30), peak 255.22 V |
+| Checking under proportional, 12:00 | total share 64 % (none) -> 75 / 84 / 94 / 100 % after 3 / 6 / 9 / 11 checks (equal: 46 % until the last) |
 | Sharing rules, l_3432 wrong | equal: 12 of 12 limits change, 21.55 kW (snapshot); proportional: 1 of 12, 1.85 kW; realised 254.60 V at b828 b-n under every rule |
 
 ## 5. Main modelling choices
@@ -85,7 +91,7 @@ The ~46 "from_dss: ... could not be represented" warnings at import are expected
 ## 6. Known issues and limitations
 
 1. Source voltage drives the size of the error (section 4, source sweep). Team-Nando's MV profile is about 0.99-1.00 pu; the LV operating point depends on the transformer tap. Always quote the error together with the source voltage.
-2. Resistance ratio: the dataset's 16 mm² line code (1.49 Ω/km) is about 30 % above the IEC 60228 20 °C maximum (1.15 Ω/km), while its 4 mm² code (4.57 Ω/km) is close to IEC (4.61). The 3.07 ratio is therefore conservative; with 4.0 the reviewer found +149 % and 256.7 V at 12:00 (bound-point).
+2. Resistance ratio: the dataset's 16 mm² line code (1.49 Ω/km) is about 30 % above the IEC 60228 20 °C maximum (1.15 Ω/km), while its 4 mm² code (4.57 Ω/km) is close to IEC (4.61). The 3.07 ratio is therefore conservative; doe_ratio.jl shows that the IEC ratio 4.0 adds about 0.35 kW to the gap and 0.5-0.8 V to the realised peak.
 3. Equal allocation is the main rule; one critical customer sets everyone's DOE. Proportional and max-min are tested in doe_fairness.jl: they change who absorbs the error, not the physical over-voltage.
 4. One feeder, one day, one set of 12 profiles, 5 kVA inverters.
 5. Network losses differ by about 7 % between BMOPFTools and OpenDSS (voltages agree). Not yet traced.
@@ -97,7 +103,7 @@ The ~46 "from_dss: ... could not be represented" warnings at import are expected
 11. The older results files doe_dirty_snapshot.csv and doe_severity_sweep.csv report bound-point voltages only; the realised values for the same cases are in doe_critical_cables.csv, doe_record_errors.csv and doe_source_sweep.csv.
 12. The DOE is very slightly non-monotone in a single cable's resistance: a thicker cable lowers that customer's voltage, so its inverter absorbs less reactive power, which nudges its neighbours. Effect up to 0.02 kW (0.7 %); reproduced in OpenDSS; disappears with Volt-VAr off. So 'thinnest cable everywhere' is the worst case only to within about 0.02 kW.
 13. The size of the error is not monotone in source voltage: largest around 1.025-1.03 pu, smaller in kW at 1.035 pu where the clean DOE collapses.
-14. The day results come from one partly cloudy day (sun peak 3.6 kW per house).
+14. The measured day is partly cloudy (sun peak 3.6 kW per house); the clear-sky run uses an assumed peak of 0.85 x 5 kW and a symmetric half-sine shape.
 
 ## 7. Where the history is
 

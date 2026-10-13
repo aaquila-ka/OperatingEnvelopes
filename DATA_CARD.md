@@ -146,6 +146,39 @@ Customer file: setting, source_pu, policy, case, customer, issued_kW, correct_kW
 
 Meaning: the safety harm of one wrong record is local and the same under every rule (the wrongly recorded customer's voltage rises). The rule only decides whose limits absorb the correction: everyone's under equal, only the affected customer's under proportional (who then carries all of it). For a mild cable (l_4155) at 12:00 no customer exceeds 253 V under any rule. When all 22 cables are wrong the error spreads under every rule, and proportional gives more curtailment (3.3 vs 0.9 kW at 12:00). Proportional raises total clean export at 12:00 (54.2 vs 51.0 kW) at the cost of a lower minimum limit (4.23 vs 4.25 kW); at the snapshot the gain is negligible (54.6 vs 54.4 kW).
 
+## File 13: results/doe_ratio.csv
+
+Cable resistance ratio, Case A (all 22 service cables really thinner), 1.03 pu, 1 kW snapshot, 11:30 and 12:00.
+Variants: `dataset_4mm2_code` (the dataset's 4 mm² code, ratio 3.07, as everywhere else), `diagR_x3.07` (16 mm² code with diagonal R x 3.07; matches the swap within 0.005 kW), `diagR_x4.00_IEC` (diagonal R x 4.0, the IEC 60228 ratio).
+Columns: setting, source_pu, variant, clean_kW, correct_kW, gap_kW, overpromise_pct, worst_V_VW, worst_n_over_253, worst_curtail_kW, pv_cap_kW, pv_V_VW, pv_n_over_253, pv_curtail_kW.
+
+| Moment | Gap 3.07 -> 4.0 | Over-promise 3.07 -> 4.0 | Realised V (Volt-Watt on) 3.07 -> 4.0 |
+|---|---|---|---|
+| 1 kW snapshot | 1.80 -> 2.14 kW | +66 % -> +90 % | 254.60 -> 255.10 V (worst case) |
+| 11:30 | 2.30 -> 2.64 kW | +122 % -> +170 % | 255.02 -> 255.77 V (sun-limited) |
+| 12:00 | 2.29 -> 2.63 kW | +117 % -> +162 % | 254.29 -> 255.12 V (sun-limited) |
+
+Meaning: results with the dataset's ratio are conservative; IEC values add about 0.35 kW to the gap and 0.5-0.8 V to the peak.
+
+## File 14: results/doe_clearsky.csv
+
+Same as file 7 (same columns) but with a clear-sky solar shape: a half-sine over the measured day's sun hours (05:30-21:00) with an ASSUMED peak of 0.85 x 5 kW = 4.25 kW per house (typical clear summer output after heat and system losses; the measured day peaks at 0.72). Only sunny half-hours (31 rows).
+Result: a customer is above 253 V in 21 half-hours (07:30-17:30), peak 255.22 V, up to 12 of 12 customers, curtailment up to 0.61 kW (11:00-15:00). Compare the measured cloudy day: 13 half-hours, peak 255.02 V. The DOE gap (about 2.3 kW) does not depend on the weather; how much of it becomes over-voltage does.
+
+## File 15: results/doe_verify_proportional.csv
+
+Checking the 12 customer cables one by one (unchecked = 4 mm²), under proportional and equal sharing, 1.03 pu, 1 kW snapshot and 12:00.
+Columns: setting, source_pu, order (opf_ranked / shortest_first), k_checked, checked_segments, clean_total_prop_kW, prop_total_kW, prop_share_pct, prop_min_kW, equal_total_kW, equal_share_pct, statuses.
+
+| 12:00, share of the all-records-right total | k = 0 | 3 | 6 | 9 | 11 |
+|---|---|---|---|---|---|
+| Proportional, OPF-ranked | 64 % | 75 % | 84 % | 94 % | 100 % |
+| Proportional, shortest first | 64 % | 71 % | 82 % | 89 % | 96 % |
+| Equal, OPF-ranked | 46 % | 57 % | 60 % | 60 % | 100 % |
+| Equal, shortest first | 46 % | 46 % | 46 % | 46 % | 46 % |
+
+Meaning: under proportional sharing every checked record releases that customer's export at once (about 2-3 points per cable, in any order); under equal sharing checking pays off only at the end. Trade-off: under proportional the unchecked customer keeps a low limit (smallest limit about 1.9-2.1 kW at 12:00 until its cable is checked).
+
 ## How much to trust it
 
 - Network model checked against OpenDSS: phase-to-neutral voltages within 0.11 V, neutral within 0.024 V.
@@ -157,5 +190,4 @@ Meaning: the safety harm of one wrong record is local and the same under every r
 
 ## Not in the data yet (planned)
 
-- A second feeder; more days (including a clear-sky day); the cable resistance ratio of about 4.0 from IEC 60228.
-- Checking records under proportional allocation (expected to pay off customer by customer).
+- A second feeder; more measured days and other sets of house profiles.
