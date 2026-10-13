@@ -158,3 +158,14 @@ inverter-limited at 1.03 pu; Geth's australian_pv uses 6 kVA with 5 kW, which wo
 - OPEN: losses OpenDSS 386.9 W vs BMOPF 359.0 W (−7.2 %, same ratio as before). Likely loss bookkeeping
   (BMOPF counts lines + transformers only; OpenDSS also counts earthing reactors/switches) and OpenDSS
   switch=y default impedance. Test later: compare per-element losses.
+
+  **Severity sweep (service-cable diagonal R × k, 1.03 pu, original loads) – 13 Oct**
+- k: 1.00 / 1.10 / 1.25 / 1.50 / 2.00 / 2.50 / 3.07 → correct DOE 4.529 / 4.520 / 4.507 / 4.084 / 3.470 / 3.063 / 2.739 kW
+- binding: inverter (k ≤ 1.25), voltage (k ≥ 1.5). Threshold behaviour: small record errors absorbed by the inverter limit.
+- Case A over-promise: 0 / +0.2 / +0.5 / +10.9 / +30.5 / +47.9 / +65.4 %; true-street customer V 252.71 / 252.82 / 252.99 / 253.27 / 253.81 / 254.46* / 255.12* V (*undeliverable within 5 kVA, counterfactual)
+- Case B lost export: 0 / −0.2 / −0.5 / −9.8 / −23.4 / −32.4 / −39.5 %
+- k = 3.07 (R only) 2.739 kW vs full 4 mm² swap 2.734 kW (swap also changes X).
+
+**Independent OpenDSS check of Case A (opendss_check_caseA.jl)**
+- 4 mm² true street, 1.03 pu, VW off, kVA relaxed, kvarMax 5: 0 kW → OpenDSS 250.38 V vs BMOPF 250.48 V (b1804 b-n);
+  4.529 kW → OpenDSS 255.19 V vs BMOPF 255.12 V (b828 b-n). Both +2.1–2.2 V above 253 V. OpenDSS PV P = 4.529 kW exactly.

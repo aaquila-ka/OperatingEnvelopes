@@ -1,0 +1,8 @@
+k,correct_kW,correct_binding,A_issued_kW,A_overpromise_pct,A_true_street_V,A_note,B_issued_kW,B_lost_pct
+1.00,4.529316,inverter,4.529316,0.000,252.7071,delivered,4.529316,0.000
+1.10,4.520410,inverter,4.529316,0.197,252.8211,delivered,4.520410,-0.197
+1.25,4.506990,inverter,4.529316,0.495,252.9905,delivered,4.506990,-0.493
+1.50,4.084355,voltage,4.529316,10.894,253.2687,delivered,4.084355,-9.824
+2.00,3.470402,voltage,4.529316,30.513,253.8090,delivered,3.470402,-23.379
+2.50,3.062886,voltage,4.529316,47.877,254.4616,undeliverable (5 kVA); counterfactual,3.062886,-32.376
+3.07,2.738948,voltage,4.529316,65.367,255.1155,undeliverable (5 kVA); counterfactual,2.738948,-39.528
