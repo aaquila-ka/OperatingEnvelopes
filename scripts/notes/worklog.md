@@ -169,3 +169,32 @@ inverter-limited at 1.03 pu; Geth's australian_pv uses 6 kVA with 5 kW, which wo
 **Independent OpenDSS check of Case A (opendss_check_caseA.jl)**
 - 4 mm² true street, 1.03 pu, VW off, kVA relaxed, kvarMax 5: 0 kW → OpenDSS 250.38 V vs BMOPF 250.48 V (b1804 b-n);
   4.529 kW → OpenDSS 255.19 V vs BMOPF 255.12 V (b828 b-n). Both +2.1–2.2 V above 253 V. OpenDSS PV P = 4.529 kW exactly.
+
+  ## 13 Oct 2026 (evening): reproducibility, realistic errors, full day, independent review and fixes
+
+**Reproducibility**
+- Found the thesis scripts use the `bmopf/` project (Julia 1.11.9, BMOPFTools b7aa9a1, PowerOptLab 953e45c, Preferences 1.5.2); its Manifest is tracked. Top-level Project.toml is the old August PMD setup.
+- Added REPRODUCE.md (versions, run order, expected numbers, known issues) and DATA_CARD.md (every results column).
+- Created private GitHub repo aaquila-ka/OperatingEnvelopes and pushed full history.
+
+**Step 2: realistic record errors** (doe_record_errors.jl, doe_critical_cables.jl)
+- Scatter (sigma 5/10/20 % per cable) and wrong type (2/5/11 of 22 cables really 4 mm2), 20 seeded draws each; running twice gave identical rows.
+- One cable at a time: only the 12 customer service cables matter; the 10 other segments are dead-end stubs with no load. Customer Ld1291's cable l_3432 (B828, 29.5 m) alone gives the same DOE as all 22 wrong.
+
+**Step 3: full day** (doe_timeseries.jl)
+- 12 of 99 Team-Nando OE1-Ideal smart-meter profiles (commit 96abbab, BSD-3), 5-min averaged to 30 min, picked with seed 20261013.
+
+**Independent review** (separate agent, OpenDSS rebuild in Python, not our code)
+- Confirmed: code logic, units, seeds, topology; clean DOE 4.527 vs 4.529 kW; l_3432 2.764 vs 2.734 kW.
+- Found overclaims: (1) "real" voltage read with Volt-Watt off and every customer exporting the full DOE, even at night; (2) results depend strongly on the 1.03 pu source; (3) "scatter is harmless" only true in the inverter-limited 1 kW snapshot; (4) "one wrong record = all wrong" only for the DOE value, not for how many customers go over 253 V.
+
+**Fixes**
+- New realised reading: customers may export up to the cap, inverters keep Volt-VAr, Volt-Watt and 5 kVA. l_3432: 254.60 V (OpenDSS 254.61 V), 1 customer above 253 V.
+- Day run limited by available sun (5 kW x pv shape): real over-voltage only 10:00-16:30, peak 255.02 V at 11:30, up to 10 customers; DOE too generous by 2.0-2.35 kW all day at 1.03 pu.
+- Record errors rerun at 12:00 loads (voltage-limited): scatter 10 % moves the DOE -5.7 to +9.3 %, max 253.20 V; wrong types up to +117 %, 255.15 V.
+- Source sweep 1.00-1.035 pu (12:00): gap 0.14 / 0.17 / 0.71 / 1.63 / 2.29 / 0.60 kW. The error matters only when the feeder is near its voltage limit.
+- All 22 scatter factors now saved per draw; gap_kW column added; "nameplate" label renamed "other".
+
+**Open**
+- Cable ratio 3.07 (dataset) vs about 4.0 (IEC) is conservative; other fairness rules; second feeder; 7 % loss gap.
+
