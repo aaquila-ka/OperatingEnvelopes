@@ -20,3 +20,5 @@ new PVSystem.Ld2050_LOAD_A phases=1 bus1=B1821.1.4 kv=0.230  kVA=5 Pmpp=5  irrad
 new PVSystem.Ld2186_LOAD_B phases=1 bus1=B1754.2.4 kv=0.230  kVA=5 Pmpp=5  irradiance=1 Temperature=25 %Cutin=0.0 %Cutout=0.0  model=1   vminpu=0.1 vmaxpu=2
 new PVSystem.Ld2804_LOAD_C phases=1 bus1=B2443.3.4 kv=0.230  kVA=5 Pmpp=5  irradiance=1 Temperature=25 %Cutin=0.0 %Cutout=0.0  model=1   vminpu=0.1 vmaxpu=2
 
+
+Edit InvControl.invall VarChangeTolerance=1e-6 VoltageChangeTolerance=1e-7 ActivePChangeTolerance=1e-6

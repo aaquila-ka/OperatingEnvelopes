@@ -75,3 +75,28 @@ ALSO NOTED, needs following up with supervisors:
 - analyze() after fix: 0 errors, 3 warnings (15 dangling stubs; two loads with low power factor – real data).
 
 **Next:** solve a power flow in BMOPFTools and compare phase-to-neutral voltages with OpenDSS (same snapshot, corrected PV file).
+## 13 Oct 2026 (afternoon) – Aim 1: BMOPFTools vs OpenDSS cross-validation
+
+**Third modelling error found and fixed – transformer star point on ground**
+- Transformers.dss winding 2 was `bus=B641 conn=wye` with no node list, so OpenDSS tied the star point to node 0 (GROUND), not to the neutral conductor (node 4). All neutral return current was forced through the 0.3 ohm / 10 ohm earth electrodes.
+- Evidence: OpenDSS neutral-to-ground about 6 V almost uniformly; BMOPF (star on neutral) 0–1.3 V; difference about −6.0 V constant at every LV bus. Hand check: 6.10 V / 0.3 ohm ≈ 20 A into the transformer earth, plus about 7 A through the 12 customer earths.
+- Fixed to `bus=B641.1.2.3.4`. OpenDSS neutral max dropped 7.5 V → 1.7 V; BMOPF unchanged (it already modelled the star point correctly).
+- CONSEQUENCE: the August neutral voltages (5.4–7.3 V) and the phase-to-neutral spread (sd 4.58 V vs 0.46 V phase-to-ground) were artefacts of this wiring error.
+- RULE for anyone continuing this work: in OpenDSS always write every node explicitly (e.g. `.1.2.3.4`, `.3.4`); any node left out defaults to ground.
+
+**solve_pf cannot reproduce inverter behaviour (BMOPFTools b7aa9a1, ext/BMOPFOpfExt/ibr.jl)**
+- Volt-Watt is a cap (P <= cap, line 693), so in a power flow P is not determined (returned an arbitrary 1607 W).
+- Volt-VAr is Q == s_max · f(U) (lines 336, 703); solve_pf returned Q = 0 exactly, consistent with s_max being stripped from the PF working copy. Open question for F. Geth.
+- q_unit other than VA_FRACTION is not supported (warns and skips Volt-VAr).
+
+**Validation method (scripts/bmopf/validate_network_pinned.jl), following Geth's split of network vs controller evidence**
+- (A) Network physics: BMOPF inverters replaced by fixed injections equal to OpenDSS's PV output.
+  Phase-to-neutral |diff| mean 0.107 V, max 0.222 V (b1006 b-n). Neutral |diff| mean 0.036 V, max 0.091 V.
+  At transformer LV bus b641 the tools agree to 0.0003 V (source and transformer identical).
+  Losses: OpenDSS 363.8 W, BMOPF 338.3 W.
+  OPEN ITEM: residual grows along the cables on phases b and c only, BMOPF slightly higher; cause not yet found.
+- (B) Inverters vs AS/NZS 4777.2 (230 V base): OpenDSS default VarChangeTolerance (2.5 %) left Q at −2.881 kvar instead of −3.000.
+  Added `Edit InvControl.invall VarChangeTolerance=1e-6 VoltageChangeTolerance=1e-7 ActivePChangeTolerance=1e-6` to PVSystems.dss → Q = −3.000 kvar on all 12 PVs.
+- FINDING: OpenDSS InvControl evaluates the curves on PHASE-TO-GROUND voltage. ld626: V_pg 259.71 V gives P = 1.163 kW (matches); V_pn 258.79 V would give 1.693 kW. ld2186: V_pg 260.01 V gives P cut to 1.0 kW. This thesis uses phase-to-neutral (PN_PER_PHASE).
+
+**Operating point note:** with source at 1.07 pu every LV node sits about 259–262 V phase-to-neutral, so all inverters are at full Volt-VAr absorption (−3 kvar) and Volt-Watt at or near 20 % output. Source voltage choice must be settled before generating DOEs.
