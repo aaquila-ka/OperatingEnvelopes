@@ -71,6 +71,32 @@ Same as Case A/B but the service-cable resistance is multiplied by k (only the c
 Rows: 7 (k = 1.00, 1.10, 1.25, 1.50, 2.00, 2.50, 3.07).
 Key pattern: up to k = 1.25 the inverter rating hides the error (under 0.5 %); from k = 1.5 the voltage limit binds and the error passes into the DOE. At k = 1.5 and 2.0 the over-promise is delivered and causes a real over-voltage (253.27 V, 253.81 V).
 
+## File 4: results/doe_record_errors.csv
+
+Realistic record errors, many seeded random draws (source 1.03 pu). Records always say all 22 service cables are 16 mm2; the true street differs.
+
+| Column | Meaning | Unit |
+|---|---|---|
+| scenario | `scatter` = every service cable's resistance x its own random factor; `wrongtype` = some cables are really 4 mm2 | text |
+| level | scatter: sigma of the factor (0.05, 0.10, 0.20); wrongtype: number of wrong cables (2, 5, 11 of 22) | - |
+| draw | draw number 1 to 20 | - |
+| seed | random seed for this draw (rebuilds it exactly) | - |
+| correct_kW, correct_binding, correct_status | DOE on that draw's true street | kW / text |
+| issued_kW | DOE on the records (4.529 kW for every draw) | kW |
+| overpromise_pct | (issued - correct) / correct x 100 | % |
+| true_street_max_vpn_V | highest customer voltage when the issued DOE is exported on the true street | V |
+| note | `delivered` or `undeliverable (5 kVA); counterfactual` | text |
+| mean_factor, max_factor | scatter only: mean and largest resistance factor of the 22 cables | - |
+| changed_segments | wrongtype only: which segments are really 4 mm2 | text |
+
+Rows: 120 (2 scenarios x 3 levels x 20 draws). Running it twice gives identical rows.
+Summary: scatter 5-10 % has no effect (max +0.3 %); scatter 20 % up to +3.8 % (4 of 20 draws real over-voltage); 2 wrong cables: mean +26.6 %, 0 to +49.7 % depending on which cables; 5 or 11 wrong cables: mean +50 to +54 %, up to the full +65.7 %.
+
+## File 5: results/doe_critical_cables.csv
+
+One cable at a time is really 4 mm2 (the other 21 correct). Same columns as file 2, plus segment, bus_from, bus_to, length (km). Sorted, most harmful first.
+Result: the 12 customer service cables each cause an over-promise (+3.9 % to +65.7 %); the 10 cables with no customer behind them cause none. The cable of customer Ld1291 (l_3432, bus B828, 29.5 m) alone gives the full Case A over-promise (+65.7 %). Among customer cables, the harm follows cable length and how close the customer already is to 253 V.
+
 ## How much to trust it
 
 - Network model checked against OpenDSS: phase-to-neutral voltages within 0.11 V, neutral within 0.024 V.
