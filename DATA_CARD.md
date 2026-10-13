@@ -181,7 +181,7 @@ Meaning: under proportional sharing every checked record releases that customer'
 
 ## How much to trust it
 
-- Network model checked against OpenDSS: phase-to-neutral voltages within 0.11 V, neutral within 0.024 V.
+- Network model checked against OpenDSS: phase-to-neutral voltages within 0.11 V, neutral within 0.024 V, losses within 0.8 W once the switch and earthing modelling difference is accounted for (see REPRODUCE.md section 6, item 5).
 - Independent review (13 Oct 2026): a separate rebuild in OpenDSS (Python, not our code) reproduced the clean snapshot DOE (4.527 vs 4.529 kW, all customer voltages within 0.03 V), the l_3432 case (2.764 vs 2.734 kW; realised 254.61 vs 254.60 V) and the 12:00 step with 6 random sets of houses (clean 3.97-4.18 kW voltage-limited, Case A +97 to +119 %).
 - Second independent review: realised readings match an exact OpenDSS model within 0.03 V; sun-limited 11:30 and 12:00 values fall inside the OpenDSS ranges over 6 random profile sets; the non-monotone steps in file 10 reproduce in OpenDSS.
 - Seeded draws rerun identically (same Julia version).

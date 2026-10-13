@@ -102,6 +102,45 @@ function run_pinned_validation()
 
     quiet = optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0)
     pf = solve_pf(net; optimizer = quiet)
+        # ---- loss breakdown (diagnosis of the 7 % loss gap, 13 Oct 2026; field names checked in BMOPFTools b7aa9a1)
+    let
+        svc = "ugsc_16cu_xlpe/nyl/pvc_ug_4w_bundled"
+        vbus(b, t) = (tb = get(get(pf["bus"], b, Dict()), t, nothing);
+                      tb === nothing ? 0.0 + 0.0im : complex(get(tb, "vr", 0.0), get(tb, "vi", 0.0)))
+        p_svc = 0.0; p_main = 0.0; p_tx = 0.0; p_sh = 0.0; p_sw = 0.0
+        for (lid, lr) in get(pf, "line", Dict())
+            pl = get(get(lr, "loss", Dict()), "p_loss", 0.0)
+            lc = get(get(get(net, "line", Dict()), lid, Dict()), "linecode", "")
+            lc == svc ? (p_svc += pl) : (p_main += pl)
+        end
+        for (tid, tr) in get(pf, "transformer", Dict())
+            tr isa Dict || continue
+            p_tx += get(get(tr, "loss", Dict()), "p_loss", 0.0)
+        end
+        for (sid, sh) in get(net, "shunt", Dict())
+            sh isa Dict || continue
+            b = String(get(sh, "bus", "")); tm = String.(get(sh, "terminal_map", String[]))
+            G = BMOPFTools._pattern_keys_to_matrix(sh, "G_"); B = BMOPFTools._pattern_keys_to_matrix(sh, "B_")
+            n = length(tm); n == 0 && continue
+            Y = (G === nothing ? zeros(n, n) : G[1:n, 1:n]) .+ im .* (B === nothing ? zeros(n, n) : B[1:n, 1:n])
+            V = [vbus(b, t) for t in tm]
+            p_sh += real(sum(V .* conj.(Y * V)))
+        end
+        for (sid, sr) in get(pf, "switch", Dict())
+            for (t, c) in sr
+                c isa Dict && (p_sw += 1e-3 * get(c, "cm", 0.0)^2)
+            end
+        end
+        @printf("BMOPF p_loss (reported)          %8.2f W\n", get(get(pf, "losses", Dict()), "p_loss", NaN))
+        @printf("  lines: service 16 mm2         %8.2f W\n", p_svc)
+        @printf("  lines: mains                  %8.2f W\n", p_main)
+        @printf("  transformers                  %8.2f W\n", p_tx)
+        @printf("NOT in p_loss: earthing shunts  %8.2f W\n", p_sh)
+        @printf("NOT modelled: switches 1 mOhm   %8.2f W   (OpenDSS switch=y)\n", p_sw)
+        @printf("p_loss + shunts + switches      %8.2f W   (compare with the OpenDSS losses above)\n",
+                get(get(pf, "losses", Dict()), "p_loss", 0.0) + p_sh + p_sw)
+        @printf("switches imported: %d\n", length(get(net, "switch", Dict())))
+    end
     @assert string(pf["termination_status"]) == "LOCALLY_SOLVED" "BMOPF PF failed: $(pf["termination_status"])"
     vbm(b, t) = complex(pf["bus"][b][t]["vr"], pf["bus"][b][t]["vi"])
 

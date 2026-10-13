@@ -65,6 +65,7 @@ The ~46 "from_dss: ... could not be represented" warnings at import are expected
 | Result | Value |
 |---|---|
 | BMOPFTools vs OpenDSS, phase-to-neutral voltage | within 0.11 V at all 55 buses; neutral within 0.024 V |
+| Losses (pinned validation) | OpenDSS 386.9 W; BMOPF p_loss 359.0 W + earthing 0.5 W + switches 28.2 W = 387.6 W |
 | Clean DOE, 1 kW snapshot | 4.906 kW at 1.00 pu, 4.529 kW at 1.03 pu (both inverter-limited) |
 | Case A, 1 kW snapshot, 1.03 pu | correct 2.734 kW, issued 4.529 kW, gap 1.795 kW (+65.6 %); realised 254.60 V with Volt-Watt (bound-point 255.12 V) |
 | Critical cables | 12 of 22 segments matter; l_3432 alone = same DOE as all 22 wrong, realised 254.60 V, 1 customer above 253 V |
@@ -94,7 +95,7 @@ The ~46 "from_dss: ... could not be represented" warnings at import are expected
 2. Resistance ratio: the dataset's 16 mm² line code (1.49 Ω/km) is about 30 % above the IEC 60228 20 °C maximum (1.15 Ω/km), while its 4 mm² code (4.57 Ω/km) is close to IEC (4.61). The 3.07 ratio is therefore conservative; doe_ratio.jl shows that the IEC ratio 4.0 adds about 0.35 kW to the gap and 0.5-0.8 V to the realised peak.
 3. Equal allocation is the main rule; one critical customer sets everyone's DOE. Proportional and max-min are tested in doe_fairness.jl: they change who absorbs the error, not the physical over-voltage.
 4. One feeder, one day, one set of 12 profiles, 5 kVA inverters.
-5. Network losses differ by about 7 % between BMOPFTools and OpenDSS (voltages agree). Not yet traced.
+5. Network losses: BMOPF p_loss (lines + transformer) is about 7 % below OpenDSS because the 8 closed switches are 1 mΩ elements in OpenDSS (switch=y) but ideal ties in BMOPFTools (28.2 W), and BMOPF's p_loss leaves out the earthing shunts (0.5 W). With both added, losses agree within 0.8 W (387.6 vs 386.9 W, 0.2 %); traced 13 Oct 2026 (loss breakdown printed by validate_network_pinned.jl). The switch impedance also explains most of the 0.10 V voltage difference. Negligible for DOEs.
 6. Smoothing: BMOPF smooths the Volt-Watt corner at 253 V (softplus, about 0.5 V wide), which caps an inverter at about 4.8 kW at exactly 253 V. This overstates realised curtailment by about 5 % when many customers sit just above 253 V (all 22 wrong: 1.86 vs 1.78 kW with the exact curve); voltages are unaffected. Small trims in the inverter-limited snapshot come from the 5 kVA circle with reactive priority. curtail_kW mixes both causes.
 7. The severity sweep (file 3) scales only diagonal R; k = 3.07 gives 2.739 kW vs the full line-code swap 2.734 kW (0.2 %).
 8. Customer counts above 253 V include marginal cases (253.01 V); read them with the voltage.

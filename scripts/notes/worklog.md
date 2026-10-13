@@ -231,3 +231,5 @@ inverter-limited at 1.03 pu; Geth's australian_pv uses 6 kVA with 5 kW, which wo
 
 **Open**
 - 7 % loss gap between BMOPFTools and OpenDSS; second feeder; more days and profile sets.
+
+- 13 Oct (late): 7 % loss gap traced. The 8 closed switches are 1 mOhm in OpenDSS but ideal in BMOPFTools (28.2 W), and BMOPF p_loss excludes the earthing shunts (0.5 W). BMOPF 359.0 + 0.5 + 28.2 = 387.6 W vs OpenDSS 386.9 W (0.2 %). Loss breakdown block added to validate_network_pinned.jl after solve_pf.
