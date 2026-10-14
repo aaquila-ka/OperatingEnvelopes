@@ -1,0 +1,7 @@
+setting,source_pu,linecode,max_phase_current_A,max_neutral_current_A,max_phase_segment
+snapshot_1kW,1.030,ughv_400al_triplex_ug_4w_bundled,69.623,17.381,l_4005
+snapshot_1kW,1.030,uglv_240al_xlpe/nyl/pvc_ug_4w_bundled,34.902,17.454,l_1608
+snapshot_1kW,1.030,ugsc_16cu_xlpe/nyl/pvc_ug_4w_bundled,17.483,17.386,l_3432
+day_1200,1.030,ughv_400al_triplex_ug_4w_bundled,73.332,17.900,l_4005
+day_1200,1.030,uglv_240al_xlpe/nyl/pvc_ug_4w_bundled,36.788,18.745,l_1749
+day_1200,1.030,ugsc_16cu_xlpe/nyl/pvc_ug_4w_bundled,18.553,18.496,l_504

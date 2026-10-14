@@ -1,0 +1,15 @@
+source_pu,segment_kind_or_linecode,max_phase_current_A,max_neutral_current_A,max_phase_segment
+0.940,ughv_400al_triplex_ug_4w_bundled,497.127,68.879,l_4678
+0.940,uglv_240al_xlpe/nyl/pvc_ug_4w_bundled,292.274,115.763,l_4653
+0.940,upstream,216.962,65.642,l_2373
+0.940,uglv_120cu_xlpe/nyl/pvc_ug_4w_bundled,168.104,71.285,l_1977
+0.940,generic/lv,115.154,42.214,l_1138
+0.940,drop,14.797,14.768,l_3556
+0.940,stub,0.001,0.000,l_4282
+1.000,ughv_400al_triplex_ug_4w_bundled,393.958,45.635,l_4678
+1.000,uglv_240al_xlpe/nyl/pvc_ug_4w_bundled,223.503,79.168,l_4653
+1.000,upstream,152.792,36.834,l_2373
+1.000,uglv_120cu_xlpe/nyl/pvc_ug_4w_bundled,113.306,34.486,l_1977
+1.000,generic/lv,78.718,27.165,l_1138
+1.000,drop,11.005,10.954,l_1384
+1.000,stub,0.001,0.000,l_4282
