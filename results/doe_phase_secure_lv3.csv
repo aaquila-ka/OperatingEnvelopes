@@ -1,0 +1,3 @@
+feeder,setting,source_pu,bound_point_kW,bound_binding,phase_secure_kW,change_pct
+LV3,snapshot_1kW,1.030,4.529316,inverter,4.312582,-4.785
+LV3,day_1200,1.030,4.252542,voltage,3.841408,-9.668
