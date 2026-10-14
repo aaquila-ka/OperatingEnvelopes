@@ -40,6 +40,7 @@ function lv9_phase_secure_kw()
     file = joinpath(pwd(), "results", "lv9", "lv9_phase_secure.csv")
     isfile(file) || error("missing $file: run run_phase_secure_lv9() first")
     lines = collect(eachline(file))
+    # Find the source_pu and phase_secure_kW columns, then map each pu (3 decimals) to its DOE
     hdr = split(lines[1], ",")
     ipu = findfirst(==("source_pu"), hdr); ikw = findfirst(==("phase_secure_kW"), hdr)
     return Dict(round(parse(Float64, split(l, ",")[ipu]); digits = 3) => parse(Float64, split(l, ",")[ikw])
@@ -50,36 +51,47 @@ end
 function lv9_dropout_sets(net)
     cps = connection_points(net)
     ids = sort([cp.id for cp in cps])
+    # Which phase each home is on (a, b or c)
     ph  = Dict(cp.id => cp.phase_terminals[1][1] for cp in cps)
     sets = Tuple{String,Set{String}}[("none", Set{String}())]
+    # Phase patterns (skip 'abc' = everyone): homes NOT on an exporting phase are dropped
     for pat in PS_PATTERNS[2:end]
         push!(sets, ("only_$(pat)_export", Set(id for id in ids if !(ph[id] in pat))))
     end
+    # One case per home: only that home dropped
     for id in ids
         push!(sets, ("drop_$(id)", Set([id])))
     end
     return ids, sets
 end
 
+# Step 1: check the phase-secure DOE (DOE = export limit every home gets) on the correct street
+# for all 130 cases. A case fails if the highest home voltage is above 253.005 V or the solve fails
 function run_lv9_dropout_check(; pus = [0.94, 1.00])
     t0 = time()
     sec = lv9_phase_secure_kw()
     rows = String[]
     for pu in pus
+        # The phase-secure DOE saved earlier for this source voltage
         kw  = sec[round(pu; digits = 3)]
         net = make_net(pu)                         # realised() works on a copy, so one net is enough
         ids, sets = lv9_dropout_sets(net)
         @printf("\n=== LV9 %.3f pu, phase-secure DOE %.3f kW: %d cases ===\n", pu, kw, length(sets))
         worst_v = -Inf; worst = ""; nfail = 0; tb = time()
         for (k, (name, dropped)) in enumerate(sets)
+            # Dropped homes get cap 0, everyone else may export up to the DOE
             caps = Dict(id => (id in dropped ? 0.0 : kw) for id in ids)
+            # Realised reading: homes export up to the cap with inverter rules (Volt-VAr / Volt-Watt) on
+            # and no voltage limit imposed, then we read the highest home voltage
             rv = realised(net, caps)
+            # Fail if above 253 V + 0.005 V. A failed solve gives NaN, and !(NaN <= x) is true, so it fails too
             fail = !(rv.v <= V_MAX_PN + 0.005)
             nfail += fail
             rv.v > worst_v && (worst_v = rv.v; worst = name)
             fail && @printf("  FAIL  %-28s %.2f V, %d customers over 253 V\n", name, rv.v, rv.n_over)
             push!(rows, @sprintf("%.3f,%.6f,%s,%d,%.4f,%d,%s,\"%s\"", pu, kw, name, length(dropped),
                                  rv.v, rv.n_over, fail ? "FAIL" : "ok", rv.who))
+            # Progress: the nobody-dropped result, and after 10 cases an estimate of the time needed
             k == 1  && @printf("  nobody dropped: %.2f V, %d over 253 V\n", rv.v, rv.n_over)
             k == 10 && @printf("  ... %.1f s per case, about %.0f min for this pu\n",
                                (time() - tb) / 10, (time() - tb) / 10 * length(sets) / 60)
@@ -87,6 +99,7 @@ function run_lv9_dropout_check(; pus = [0.94, 1.00])
         @printf("  worst: %.2f V (%s);  cases over 253 V: %d of %d  (%.0f min)\n",
                 worst_v, worst, nfail, length(sets), (time() - tb) / 60)
     end
+    # Write lv9_dropout_check.csv
     open(joinpath(pwd(), "results", "lv9", "lv9_dropout_check.csv"), "w") do io
         println(io, "source_pu,phase_secure_kW,case,n_dropped,realised_V_VW,n_customers_over_253,result,customers_over_253")
         foreach(l -> println(io, l), rows)
@@ -110,6 +123,8 @@ end
 # OUTPUT results/lv9/lv9_dropout_secure.csv, results/lv9/lv9_dropout_diagnostic.csv
 # =============================================================================================
 
+# Realised reading of every case at the equal limit kw. Returns ok (no case over 253.005 V),
+# the worst voltage and case, and the number of fails. With early_stop it stops at the first fail
 function lv9_check(net, ids, sets, kw; early_stop = true)
     worst_v = -Inf; worst = ""; nfail = 0
     for (name, dropped) in sets
@@ -127,6 +142,7 @@ function run_lv9_dropout_secure(; pus = [0.94, 1.00], iters = 8)
     sec = lv9_phase_secure_kw()
     rows = String[]; drows = String[]
     for pu in pus
+        # Upper end of the search: the phase-secure DOE
         hi  = sec[round(pu; digits = 3)]
         net = make_net(pu)
         cps = connection_points(net)
@@ -135,10 +151,13 @@ function run_lv9_dropout_secure(; pus = [0.94, 1.00], iters = 8)
         @printf("\n=== LV9 %.3f pu, phase-secure DOE %.3f kW ===\n", pu, hi)
         # (1) diagnostic: verify_operating_envelope vs realised reading, pattern by pattern
         println("  pattern            verify says   realised V   >253")
+        # Same limit for every home, in W, as verify_operating_envelope expects
         caps = Dict(cp.id => 1000.0 * hi for cp in cps)
         pats = ps_patterns(cps)                             # same order as PS_PATTERNS
         for (j, pat) in enumerate(PS_PATTERNS)
+            # What the phase-secure check says for this one pattern (feasible or not)
             ev = verify_operating_envelope(net, cps, caps; utilizations = [pats[j]], solver_options = OPTS)
+            # The same pattern in the realised reading (pattern 1 = nobody dropped)
             dropped = j == 1 ? Set{String}() : psets[j][2]
             rv = realised(net, Dict(id => (id in dropped ? 0.0 : hi) for id in ids))
             @printf("  %-17s  %-12s  %8.2f    %3d   %s\n", pat, ev.feasible[1] ? "feasible" : "INFEASIBLE",
@@ -149,10 +168,13 @@ function run_lv9_dropout_secure(; pus = [0.94, 1.00], iters = 8)
         # (2) bisection on the realised reading (phase patterns only), between 0.9 x (or 0) and the
         #     phase-secure DOE, so the result is never above the phase-secure DOE. Note: the
         #     `iters += 4` fallback below also carries over to the next source voltage.
+        # Lower end: 90 % of the phase-secure DOE; if even that fails, start at 0 and do 4 more steps
         lo = 0.9 * hi
         if !lv9_check(net, ids, psets, lo).ok
             lo = 0.0; iters += 4
         end
+        # If the phase-secure DOE already passes, keep it; otherwise halve the range iters times,
+        # keeping the safe end (lo) each time
         if lv9_check(net, ids, psets, hi).ok
             lo = hi
         else
@@ -164,10 +186,13 @@ function run_lv9_dropout_secure(; pus = [0.94, 1.00], iters = 8)
                 r.ok ? (lo = mid) : (hi = mid)
             end
         end
+        # The dropout-secure (safer) DOE: the highest safe value found. On LV9 it is checked for nobody
+        # dropped, whole phases silent, and any one home silent
         ds = lo
         # (3) final check over all 130 cases
         tb = time()
         chk = lv9_check(net, ids, sets, ds; early_stop = false)
+        # Compare with the phase-secure DOE: 100 x (dropout-secure / phase-secure - 1)
         s0 = sec[round(pu; digits = 3)]
         @printf("  dropout-secure DOE %.3f kW (%+.1f %% vs phase-secure %.3f kW)\n", ds, 100 * (ds / s0 - 1), s0)
         @printf("  final check over %d cases: worst %.2f V (%s), over 253 V: %d  (%.0f min)\n",
@@ -175,6 +200,7 @@ function run_lv9_dropout_secure(; pus = [0.94, 1.00], iters = 8)
         push!(rows, @sprintf("LV9,clean_1kW,%.3f,%.6f,%.6f,%.3f,%d,%.4f,%s,%d", pu, s0, ds,
                              100 * (ds / s0 - 1), length(sets), chk.v, chk.worst, chk.nfail))
     end
+    # Write the DOE results and the diagnostic table
     open(joinpath(pwd(), "results", "lv9", "lv9_dropout_secure.csv"), "w") do io
         println(io, "feeder,setting,source_pu,phase_secure_kW,dropout_secure_kW,change_vs_phase_secure_pct,n_cases_checked,worst_V_VW,worst_case,n_fail")
         foreach(l -> println(io, l), rows)

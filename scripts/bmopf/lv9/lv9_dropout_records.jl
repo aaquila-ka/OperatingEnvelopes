@@ -31,6 +31,7 @@
 include(joinpath(pwd(), "scripts", "bmopf", "lv9", "lv9_core.jl"))       # segment_sets, set_small!
 include(joinpath(pwd(), "scripts", "bmopf", "lv9", "lv9_dropout.jl"))    # lv9_dropout_sets, lv9_check
 
+# Read the dropout-secure DOEs from lv9_dropout_secure.csv: the limits the records give (what is issued)
 function lv9_issued_kw()
     file = joinpath(pwd(), "results", "lv9", "lv9_dropout_secure.csv")
     isfile(file) || error("missing $file: run run_lv9_dropout_secure() first")
@@ -40,22 +41,29 @@ function lv9_issued_kw()
                 for l in lines[2:end])
 end
 
+# Headline: issue the records' dropout-secure DOE (DOE = export limit every home gets) on the TRUE
+# street, find the correct one there, and report the gap
 function run_lv9_dropout_records(; pus = [0.94, 1.00], truths = ["upstream_12", "l_2373"], iters = 10)
     t0 = time()
     issued_all = lv9_issued_kw()
+    # Find the drops and the 12 shared segments once, and name each truth
     drops, up, _, _, ncust, _, _, _ = segment_sets(make_net(1.00))
     truth_ids = Dict("upstream_12" => up, "l_2373" => ["l_2373"], "drops_123" => drops)
     rows = String[]
     for pu in pus
         issued = issued_all[round(pu; digits = 3)]
         base = make_net(pu)
+        # The 130 cases (nobody, 6 phase patterns, each single home dropped); the first 7 are the binding ones
         ids, sets = lv9_dropout_sets(base)
         psets = sets[1:7]
         @printf("\n=== LV9 %.3f pu: issued dropout-secure DOE (records) = %.3f kW, %d cases ===\n",
                 pu, issued, length(sets))
         for tname in truths
+            # TRUE street: these segments are really 4 mm2
             tnet = set_small!(make_net(pu), truth_ids[tname])        # realised() copies it, so one is enough
             tb = time()
+            # (1) Give every home the issued DOE on the true street and check all 130 cases
+            # (realised reading: homes export up to the cap, inverter rules on, no voltage limit imposed)
             on_true = lv9_check(tnet, ids, sets, issued; early_stop = false)
             # correct DOE: bisection 0 .. issued on the 7 binding cases, then full check.
             # Capped at the issued DOE, so the gap is never negative ("no gap" means gap <= 0);
@@ -69,6 +77,7 @@ function run_lv9_dropout_records(; pus = [0.94, 1.00], truths = ["upstream_12", 
                     lv9_check(tnet, ids, psets, mid).ok ? (lo = mid) : (hi = mid)
                 end
             end
+            # Check the correct DOE over all 130 cases; gap = issued minus correct
             correct = lo
             fin = lv9_check(tnet, ids, sets, correct; early_stop = false)
             gap = issued - correct
@@ -78,11 +87,13 @@ function run_lv9_dropout_records(; pus = [0.94, 1.00], truths = ["upstream_12", 
                     "", correct, gap, 100 * gap / correct)
             @printf("  %-18s | final check of correct DOE: worst %.2f V, over 253 V: %d   [%.0f min]\n",
                     "", fin.v, fin.nfail, (time() - tb) / 60)
+            # CSV row: gap % = 100 x gap / correct; worst voltage and fails on the true street; final check
             push!(rows, @sprintf("%.3f,%s,%.6f,%.6f,%.6f,%.3f,%.4f,%s,%d,%d,%.4f,%d",
                                  pu, tname, issued, correct, gap, 100 * gap / correct,
                                  on_true.v, on_true.worst, on_true.nfail, length(sets), fin.v, fin.nfail))
         end
     end
+    # Write lv9_dropout_records.csv
     open(joinpath(pwd(), "results", "lv9", "lv9_dropout_records.csv"), "w") do io
         println(io, "source_pu,truth,issued_kW_records,correct_kW_true,gap_kW,gap_pct,issued_on_true_worst_V,worst_case,cases_over_253,n_cases,correct_final_worst_V,correct_final_n_fail")
         foreach(l -> println(io, l), rows)

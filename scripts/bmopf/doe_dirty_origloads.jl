@@ -29,9 +29,11 @@
 
 include(joinpath(pwd(), "scripts", "bmopf", "doe_dirty_snapshot.jl"))   # helpers (also reruns edited-load case)
 
+# Original CSIRO load per home: 1 kW at power factor 0.88 (reactive power = P x tan(acos(0.88)))
 const ORIG_P_W   = 1000.0
 const ORIG_Q_VAR = 1000.0 * tan(acos(0.88))     # 539.7 var
 
+# Sets every home's load to the original 1 kW and 539.7 var (see the review note: make_net already uses these)
 function original_loads!(net)
     for ld in values(net["load"])
         ld["p_nom"] = Any[ORIG_P_W]
@@ -40,13 +42,18 @@ function original_loads!(net)
     return net
 end
 
+# Builds the records street (16 mm2) and the true 4 mm2 street with the original loads, runs Case A and Case B,
+# and writes the CSV (as written it stops at build_net, see the review notes in the header)
 function run_origloads()
     base    = original_loads!(build_net(swapped = false))   # 16 mm2 services
     swapped = original_loads!(build_net(swapped = true))    # 4 mm2 services
     @printf("\n######## ORIGINAL LOADS: 12 x %.0f W, %.1f var (pf 0.88) ########\n", ORIG_P_W, ORIG_Q_VAR)
     rows = String[]
+    # Case A: the true street is 4 mm2 but the records say 16 mm2 (DOE too generous)
     push!(rows, run_case("ORIG LOADS CASE A: truth 4 mm2, records say 16 mm2", swapped, base))
+    # Case B: the mirror, true street 16 mm2 but the records say 4 mm2 (DOE too strict)
     push!(rows, run_case("ORIG LOADS CASE B: truth 16 mm2, records say 4 mm2", base, swapped))
+    # Write the header and both rows
     open(joinpath(pwd(), "results", "doe_dirty_snapshot_origloads.csv"), "w") do io
         println(io, "case,correct_limit_kW,wrong_records_limit_kW,real_max_vpn_V,where")
         foreach(l -> println(io, l), rows)
@@ -54,4 +61,5 @@ function run_origloads()
     println("\nwritten results/doe_dirty_snapshot_origloads.csv")
 end
 
+# Runs straight away when the file is included
 run_origloads()

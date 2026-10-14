@@ -32,11 +32,14 @@ include(joinpath(pwd(), "scripts", "bmopf", "lv9", "lv9_dropout.jl"))    # lv9_d
 # highest equal kw in [lo0, hi] passing lv9_check on `sets` (bisection); returns lo.
 # Never returns more than hi, so a correct DOE found this way gives a gap of 0 or more.
 function lv9_bisect(net, ids, sets, hi; lo0 = 0.0, iters = 10)
+    # If hi already passes, it is the answer
     lv9_check(net, ids, sets, hi).ok && return hi
     lo = lo0
+    # If the given lower end fails, start from 0 instead and do 4 more steps
     if lo > 0 && !lv9_check(net, ids, sets, lo).ok
         lo = 0.0; iters += 4
     end
+    # Halve the range each step: a safe middle becomes the new lower end, an unsafe one the new upper end
     for it in 1:iters
         mid = (lo + hi) / 2
         lv9_check(net, ids, sets, mid).ok ? (lo = mid) : (hi = mid)
@@ -44,8 +47,11 @@ function lv9_bisect(net, ids, sets, hi; lo0 = 0.0, iters = 10)
     return lo
 end
 
+# Whole LV9 chain at each extra source voltage (pu = grid voltage relative to normal);
+# each pu gets its own CSV so the 0.94 / 1.00 pu files stay as they are
 function run_lv9_midpoint(; pus = [0.97], truths = ["upstream_12", "l_2373"])
     t0 = time()
+    # Drops and the 12 shared segments, and the truths to test
     drops, up, _, _, _, _, _, _ = segment_sets(make_net(1.00))
     truth_ids = Dict("upstream_12" => up, "l_2373" => ["l_2373"], "drops_123" => drops)
     for pu in pus
@@ -54,23 +60,30 @@ function run_lv9_midpoint(; pus = [0.97], truths = ["upstream_12", "l_2373"])
         ids, sets = lv9_dropout_sets(net)
         psets = sets[1:7]
         # 1. bound-point and phase-secure
+        # Bound-point (basic) DOE = checked only with everyone exporting; phase-secure = also safe when
+        # one or two whole phases export nothing
         bound, b, _, _, _ = eq_doe(make_net(pu))
         sec, _ = ps_doe(make_net(pu), bound)
         @printf("\n=== LV9 %.3f pu: bound-point %.3f kW (%s), phase-secure %.3f kW (%+.1f %%)  [%.0f min]\n",
                 pu, bound, b, sec, 100 * (sec / bound - 1), (time() - t0) / 60)
         # 2. dropout-secure
+        # Dropout-secure (safer) DOE: search from 90 % of the phase-secure DOE up to it on the 7 binding
+        # cases (realised reading), then check all 130 cases
         ds  = lv9_bisect(net, ids, psets, sec; lo0 = 0.9 * sec, iters = 8)
         chk = lv9_check(net, ids, sets, ds; early_stop = false)
         @printf("  dropout-secure %.3f kW (%+.1f %% vs bound point); final check: worst %.2f V (%s), over 253 V: %d of %d  [%.0f min]\n",
                 ds, 100 * (ds / bound - 1), chk.v, chk.worst, chk.nfail, length(sets), (time() - t0) / 60)
+        # Row for the clean street (no wrong records, so gap 0)
         push!(rows, @sprintf("%.3f,clean,%.6f,%.6f,%.6f,%.6f,0,0,%.4f,%s,%d,%.4f,%d",
                              pu, bound, sec, ds, ds, chk.v, chk.worst, chk.nfail, chk.v, chk.nfail))
         # 3. headline with wrong records
         for tname in truths
+            # TRUE street: check the issued DOE on it, find the correct DOE (never above the issued one), check that too
             tnet = set_small!(make_net(pu), truth_ids[tname])
             on_true = lv9_check(tnet, ids, sets, ds; early_stop = false)
             correct = lv9_bisect(tnet, ids, psets, ds)
             fin = lv9_check(tnet, ids, sets, correct; early_stop = false)
+            # Gap = issued minus correct; % = 100 x gap / correct
             gap = ds - correct
             @printf("  truth %-12s | issued on true: worst %.2f V (%s), cases over 253 V: %d of %d\n",
                     tname, on_true.v, on_true.worst, on_true.nfail, length(sets))

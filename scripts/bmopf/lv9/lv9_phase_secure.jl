@@ -24,16 +24,22 @@
 include(joinpath(pwd(), "scripts", "bmopf", "lv9", "lv9_common.jl"))
 include(joinpath(pwd(), "scripts", "bmopf", "phase_secure_core.jl"))
 
+# For each source voltage (pu = grid voltage relative to normal): the basic DOE (export limit every
+# home gets), then the phase-secure DOE (also safe when one or two whole phases export nothing)
 function run_phase_secure_lv9(; pus = [0.94, 1.00])
     t0 = time()
     rows = String[]
     for pu in pus
+        # Bound-point (basic) DOE = checked only with everyone exporting
         bound, b, _, _, _ = eq_doe(make_net(pu))
+        # Bisection between 0 and the bound-point DOE, checking all 7 phase patterns (ps_doe, phase_secure_core.jl)
         sec, it = ps_doe(make_net(pu), bound)
+        # Print both and the % change = 100 x (phase-secure / bound-point - 1)
         @printf("LV9 %.3f pu: bound-point DOE %.3f kW (%s) -> phase-secure DOE %.3f kW (%+.1f %%)  [%.0f s]\n",
                 pu, bound, b, sec, 100 * (sec / bound - 1), time() - t0)
         push!(rows, @sprintf("LV9,clean_1kW,%.3f,%.6f,%s,%.6f,%.3f", pu, bound, b, sec, 100 * (sec / bound - 1)))
     end
+    # Write lv9_phase_secure.csv (lv9_dropout.jl reads it)
     open(joinpath(pwd(), "results", "lv9", "lv9_phase_secure.csv"), "w") do io
         println(io, "feeder,setting,source_pu,bound_point_kW,bound_binding,phase_secure_kW,change_pct")
         foreach(l -> println(io, l), rows)

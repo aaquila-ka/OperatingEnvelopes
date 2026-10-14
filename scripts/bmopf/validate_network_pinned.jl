@@ -28,19 +28,29 @@
 #           via OpenDSSDirect.jl; Ipopt.
 # =============================================================================
 
+# OpenDSSDirect lets Julia run OpenDSS (the industry power-flow program) directly
 using BMOPFTools, JuMP, Ipopt, OpenDSSDirect, Printf
 
 isdefined(Main, :load_lv3) || include(joinpath(pwd(), "scripts", "bmopf", "load_lv3.jl"))
 
+# The AS/NZS 4777.2 "Australia A" Volt-VAr curve (inverter rule): reactive power as a fraction of 5
+# kVA vs voltage. +0.44 (inject) up to 207 V, sloping to 0 at 220 V, 0 from 220 to 240 V, sloping to
+# -0.6 (absorb) at 258 V and above
 q_curve(V) = V <= 207 ? 0.44 : V <= 220 ? 0.44 * (220 - V) / 13 : V <= 240 ? 0.0 :
              V <= 258 ? -0.6 * (V - 240) / 18 : -0.6
+# The Volt-Watt curve: full output (1.0) up to 253 V, falling in a straight line to 0.2 at 260 V,
+# then staying at 0.2
 p_curve(V) = V <= 253 ? 1.0 : V <= 260 ? 1.0 - 0.8 * (V - 253) / 7 : 0.2
 
+# run_pinned_validation(): solve the street in OpenDSS, check OpenDSS's inverters against the curves
+# (part B), then pin BMOPF's solar to OpenDSS's outputs and compare voltages and losses (part A).
+# Writes the CSV
 function run_pinned_validation()
     root = pwd()
     net  = load_lv3()
 
     # ------------------------------------------------------------ OpenDSS solve
+    # Path to the OpenDSS master file of the same street
     master = abspath(joinpath(root, "data", "networks", "LV3_55bus_withPV", "Master.dss"))
     try
         # load and solve twice: in this setup the first solve after clear+redirect left all
@@ -54,9 +64,12 @@ function run_pinned_validation()
     finally
         cd(root)
     end
+    # Stop if OpenDSS failed or gave all-zero voltages
     @assert OpenDSSDirect.Solution.Converged() "OpenDSS did not converge"
     @assert maximum(abs.(OpenDSSDirect.Circuit.AllBusVolts())) > 0 "OpenDSS voltages all zero"
 
+    # Store every OpenDSS bus voltage: odss[bus][node] = complex voltage; nodes 1, 2, 3 = phases a,
+    # b, c and node 4 = neutral
     odss = Dict{String, Dict{Int, ComplexF64}}()
     for name in OpenDSSDirect.Circuit.AllBusNames()
         OpenDSSDirect.Circuit.SetActiveBus(name)
@@ -68,6 +81,8 @@ function run_pinned_validation()
 
     # ------------------------------------------------------------ loads check
     println("\nLOADS: OpenDSS vs BMOPF (should all be 1.000 kW, 0.540 kvar)")
+    # Print each load as OpenDSS and as BMOPF see it, to show both tools use the same 1 kW / 0.540
+    # kvar loads
     k = OpenDSSDirect.Loads.First()
     while k > 0
         id = lowercase(OpenDSSDirect.Loads.Name())
@@ -77,6 +92,8 @@ function run_pinned_validation()
         k = OpenDSSDirect.Loads.Next()
     end
 
+    # Read every OpenDSS PV system's actual output (kW, kvar); these are the numbers BMOPF will be
+    # pinned to
     pvout = Dict{String, Tuple{Float64, Float64}}()
     k = OpenDSSDirect.PVsystems.First()
     while k > 0
@@ -87,6 +104,8 @@ function run_pinned_validation()
     @assert length(pvout) == 12 "expected 12 PVs from OpenDSS, got $(length(pvout))"
 
     # ------------------------------------------------------------ (B) inverters
+    # Part B: did OpenDSS's inverters follow the AS/NZS 4777.2 curves? OpenDSS watches
+    # phase-to-GROUND voltage, so the curves are evaluated at that voltage
     phase_node = Dict("a" => 1, "b" => 2, "c" => 3)
     println("\n(B) OpenDSS inverters vs AS/NZS 4777.2 at PHASE-TO-GROUND voltage (5 kVA, 230 V base)")
     println("    PV                V_pg(V)  V_pn(V)   P_dss  P_expect   Q_dss  Q_expect")
@@ -95,17 +114,25 @@ function run_pinned_validation()
         ibr = net["ibr"][id]
         bus = ibr["bus"]; ph = ibr["terminal_map"][1]
         nd  = odss[bus]
+        # Phase-to-ground voltage (what OpenDSS's inverter control watches) and phase-to-neutral
+        # voltage (what the home feels)
         Vpg = abs(nd[phase_node[ph]])
         Vpn = abs(nd[phase_node[ph]] - nd[4])
+        # Expected Q (kvar) = 5 kVA x Volt-VAr curve; expected P = Volt-Watt cap, but no more than
+        # what the 5 kVA has left after Q (reactive power has priority)
         qe  = 5 * q_curve(Vpg)
         pe  = min(5 * p_curve(Vpg), sqrt(max(25 - qe^2, 0.0)))   # Volt-Watt cap and 5 kVA limit
         kw, kvar = pvout[id]
+        # Keep the biggest mismatch seen, for the summary line
         worstP = max(worstP, abs(kw - pe)); worstQ = max(worstQ, abs(kvar - qe))
         @printf("    %-16s %8.2f %8.2f  %6.3f  %8.3f  %7.3f  %7.3f\n", id, Vpg, Vpn, kw, pe, kvar, qe)
     end
     @printf("    worst |P_dss - P_expect| = %.3f kW, worst |Q_dss - Q_expect| = %.3f kvar\n", worstP, worstQ)
 
     # ------------------------------------------------------------ (A) network physics
+    # Part A: replace each BMOPF inverter with a fixed negative load equal to OpenDSS's PV output (a
+    # negative load = power pushed INTO the grid). Now both tools solve exactly the same problem, so
+    # any voltage difference comes from the network model itself
     for (id, ibr) in collect(net["ibr"])
         kw, kvar = pvout[id]
         net["load"]["pvfixed_" * id] = Dict{String, Any}(
@@ -113,8 +140,10 @@ function run_pinned_validation()
             "configuration" => "SINGLE_PHASE", "model" => "constant_power",
             "p_nom" => Any[-1000 * kw], "q_nom" => Any[-1000 * kvar], "v_nom" => Any[230.0])
     end
+    # Remove the inverters (and so their rules), since the fixed injections now stand in for them
     empty!(net["ibr"])
 
+    # Solve BMOPF's power flow (just the physics, no optimising) with Ipopt kept quiet
     quiet = optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0)
     pf = solve_pf(net; optimizer = quiet)
     # ---- loss breakdown (explains the 7 % loss gap, REPRODUCE.md section 6 item 5; field names
@@ -122,10 +151,12 @@ function run_pinned_validation()
     #      Switch loss assumes 1 mOhm per conductor (OpenDSS switch=y). Runs before the PF
     #      status check below, so if the PF failed these numbers are not meaningful.
     let
+        # Add up losses by type: service cables vs mains, transformer, earthing shunts and switches
         svc = "ugsc_16cu_xlpe/nyl/pvc_ug_4w_bundled"
         vbus(b, t) = (tb = get(get(pf["bus"], b, Dict()), t, nothing);
                       tb === nothing ? 0.0 + 0.0im : complex(get(tb, "vr", 0.0), get(tb, "vi", 0.0)))
         p_svc = 0.0; p_main = 0.0; p_tx = 0.0; p_sh = 0.0; p_sw = 0.0
+        # Line losses, split by whether the line is a 16 mm2 service cable or a main
         for (lid, lr) in get(pf, "line", Dict())
             pl = get(get(lr, "loss", Dict()), "p_loss", 0.0)
             lc = get(get(get(net, "line", Dict()), lid, Dict()), "linecode", "")
@@ -135,6 +166,8 @@ function run_pinned_validation()
             tr isa Dict || continue
             p_tx += get(get(tr, "loss", Dict()), "p_loss", 0.0)
         end
+        # Earthing shunt loss = real part of sum(V x conj(Y x V)) at each shunt; BMOPF's p_loss does
+        # not include it
         for (sid, sh) in get(net, "shunt", Dict())
             sh isa Dict || continue
             b = String(get(sh, "bus", "")); tm = String.(get(sh, "terminal_map", String[]))
@@ -144,6 +177,8 @@ function run_pinned_validation()
             V = [vbus(b, t) for t in tm]
             p_sh += real(sum(V .* conj.(Y * V)))
         end
+        # Switch loss = 1 mOhm x current^2 for each conductor (OpenDSS switches have this small
+        # resistance)
         for (sid, sr) in get(pf, "switch", Dict())
             for (t, c) in sr
                 c isa Dict && (p_sw += 1e-3 * get(c, "cm", 0.0)^2)
@@ -159,9 +194,13 @@ function run_pinned_validation()
                 get(get(pf, "losses", Dict()), "p_loss", 0.0) + p_sh + p_sw)
         @printf("switches imported: %d\n", length(get(net, "switch", Dict())))
     end
+    # Stop if BMOPF's power flow did not solve
     @assert string(pf["termination_status"]) == "LOCALLY_SOLVED" "BMOPF PF failed: $(pf["termination_status"])"
+    # Complex voltage from BMOPF at one bus terminal
     vbm(b, t) = complex(pf["bus"][b][t]["vr"], pf["bus"][b][t]["vi"])
 
+    # Build the comparison table: one row per LV bus and phase (phase-to-neutral), plus one
+    # neutral-to-ground row per bus
     rows = Tuple{String, String, Float64, Float64, Float64}[]
     for bus in sort(collect(keys(odss)))
         nd = odss[bus]
@@ -170,12 +209,15 @@ function run_pinned_validation()
         haskey(pf["bus"], bus) || continue
         for (n, t) in ((1, "a"), (2, "b"), (3, "c"))
             haskey(nd, n) || continue
+            # OpenDSS and BMOPF phase-to-neutral voltage at the same point, and their difference
             vd = abs(nd[n] - nd[4])
             vb = abs(vbm(bus, t) - vbm(bus, "n"))
             push!(rows, (bus, t * "-n", vd, vb, vb - vd))
         end
         push!(rows, (bus, "n-g", abs(nd[4]), abs(vbm(bus, "n")), abs(vbm(bus, "n")) - abs(nd[4])))
     end
+    # Split the rows into phase-to-neutral and neutral-to-ground, and find the worst
+    # phase-to-neutral difference (REPRODUCE.md section 4: within 0.11 V, neutral within 0.024 V)
     pn  = filter(r -> r[2] != "n-g", rows)
     ng  = filter(r -> r[2] == "n-g", rows)
     dpn = [abs(r[5]) for r in pn]
@@ -191,8 +233,12 @@ function run_pinned_validation()
     @printf("  Neutral-to-ground: %d buses   OpenDSS max %.3f V   BMOPF max %.3f V\n",
             length(ng), maximum(r[3] for r in ng), maximum(r[4] for r in ng))
     @printf("    |difference| mean %.4f V   max %.4f V\n", sum(dng) / length(dng), maximum(dng))
+    # Total losses from each tool (REPRODUCE.md: OpenDSS 386.9 W, BMOPF p_loss 359.0 W; the
+    # breakdown above explains the gap)
     @printf("  Losses: OpenDSS %.1f W   BMOPF %.1f W\n", real(OpenDSSDirect.Circuit.Losses()[1]), pf["losses"]["p_loss"])
 
+    # Write every row to the CSV: bus, quantity (a-n, b-n, c-n or n-g), OpenDSS V, BMOPF V,
+    # difference
     open(joinpath(root, "results", "pf_validation_lv3_pinned.csv"), "w") do io
         println(io, "bus,quantity,v_opendss_V,v_bmopf_V,diff_V")
         for r in rows
@@ -203,4 +249,5 @@ function run_pinned_validation()
     return nothing
 end
 
+# Runs as soon as the file is included
 run_pinned_validation()
