@@ -1,0 +1,5 @@
+source_pu,policy,case,issued_total_kW,correct_total_kW,n_customers_changed,total_gap_kW,realised_V_VW,n_customers_over_253,curtail_kW,customers_over_253
+0.940,equal,drop_l_2397,441.147470,441.201870,0,-0.054400,252.9973,0,0.000000,""
+0.940,equal,upstream_12,441.147470,261.770112,123,179.377358,258.9858,64,40.539575,""
+0.940,proportional,drop_l_2397,525.008413,524.125446,1,0.882967,254.1929,1,0.672627,"b1097 a-n"
+0.940,proportional,upstream_12,525.008413,447.282147,100,77.726266,259.0053,64,57.877801,""
