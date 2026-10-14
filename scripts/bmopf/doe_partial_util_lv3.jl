@@ -1,19 +1,26 @@
-# scripts/bmopf/doe_partial_util_lv3.jl
+# =============================================================================
+# doe_partial_util_lv3.jl: part-export check of the LV3 dropout-secure DOE
 #
-# PARTIAL-EXPORT CHECK of the LV3 dropout-secure DOE (reviewer point, 14 Oct 2026).
-# The dropout check only tried on/off export (each customer at 0 % or 100 % of the DOE). Here each
-# customer exports a RANDOM fraction of the DOE (between 0 and 100 %), realised reading as before
-# (Volt-VAr, Volt-Watt, 5 kVA kept, no voltage limit). If no random point goes above 253 V, the
-# on/off check was not hiding a worse in-between case (at this operating point).
-# Three kinds of random points (seeded): uniform fractions; "mostly on or off" fractions
-# (Beta(0.3, 0.3)); and one phase silent with the other two phases at random fractions.
-#
-# RUN (fresh Julia, from C:\thesis\OperatingEnvelopes, julia +1.11 --project=bmopf)
-#   julia> using Logging; disable_logging(Logging.Warn)
-#   julia> include("scripts/bmopf/doe_partial_util_lv3.jl")
-#   julia> run_partial_util_lv3()            # 2 settings x 300 points, about 3-5 min
-# NEEDS   results/doe_dropout_secure_lv3.csv
-# OUTPUT  results/doe_partial_util_lv3.csv
+# What it does (plain English):
+#   The dropout check only tried on/off export (each customer at 0 % or 100 % of its limit).
+#   Here each customer exports a RANDOM fraction of the dropout-secure DOE (0 to 100 %),
+#   read with the realised reading (Volt-VAr, Volt-Watt and 5 kVA kept, no voltage limit).
+#   If no random point goes above 253 V, the on/off check was not hiding a worse in-between
+#   case at this operating point. Three kinds of seeded random points: uniform fractions,
+#   "mostly on or off" fractions (Beta(0.3, 0.3)), and one phase silent with the other two
+#   phases at random fractions.
+# Inputs:   includes doe_dropout_records_lv3.jl (-> the LV3 network, profiles and helpers);
+#           needs results/doe_dropout_secure_lv3.csv (REPRODUCE.md step 26)
+# Outputs:  results/doe_partial_util_lv3.csv; prints the worst point per setting
+# How to run (from the repo folder, in `julia +1.11 --project=bmopf`, fresh session):
+#   using Logging; disable_logging(Logging.Warn)
+#   include("scripts/bmopf/doe_partial_util_lv3.jl")   then   run_partial_util_lv3()
+#   (2 settings x 300 points, about 2 min)
+# Used for: REPRODUCE.md step 32 (0 of 300 above 253 V; worst 252.92 V snapshot,
+#           252.82 V at 12:00)
+# Credits:  CSIRO LV3 data (CC BY-NC-SA 4.0); BMOPFTools.jl and PowerOptLab.jl by Frederik
+#           Geth; Team-Nando OE1-Ideal profiles (BSD-3, AusNet smart-meter data); Ipopt
+# =============================================================================
 
 include(joinpath(pwd(), "scripts", "bmopf", "doe_dropout_records_lv3.jl"))   # rec_issued_kw, do_net, ...
 

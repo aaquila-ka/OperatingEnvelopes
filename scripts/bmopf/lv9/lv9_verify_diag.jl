@@ -1,20 +1,25 @@
-# scripts/bmopf/lv9/lv9_verify_diag.jl
+# =============================================================================
+# lv9_verify_diag.jl: why the phase-secure check and the realised reading disagree on LV9
 #
-# DIAGNOSTIC: why does verify_operating_envelope accept the "only b and c export" pattern for the
-# LV9 phase-secure DOE (2.445 kW at 0.94 pu), while the realised reading gives 253.20 V?
-# Same DOE, same pattern (all phase-a customers export 0, phase b and c customers export 2.445 kW).
-#   A = verify_operating_envelope (export FIXED at u x DOE, 253 V limit imposed)
-#   B = realised reading (export UP TO u x DOE, maximised; no voltage limit imposed)
-# For every customer we compare inverter P and Q, phase-to-neutral voltage and neutral voltage,
-# plus solver statuses. If P and Q are the same but V differs, the two solves describe different
-# physics; if Q differs, the inverter law is treated differently; if A's own voltages exceed 253 V,
-# A's limit is not enforced where we think it is.
-#
-# RUN (fresh Julia, from C:\thesis\OperatingEnvelopes, julia +1.11 --project=bmopf)
-#   julia> using Logging; disable_logging(Logging.Warn)
-#   julia> include("scripts/bmopf/lv9/lv9_verify_diag.jl")
-#   julia> run_lv9_verify_diag()                 # ~2 min
-# OUTPUT results/lv9/lv9_verify_diag.csv (one row per customer)
+# What it does (plain English):
+#   For the LV9 phase-secure DOE (2.445 kW at 0.94 pu) and the pattern "only phases b and c
+#   export", it solves the same case two ways and compares them customer by customer:
+#     A = verify_operating_envelope (export fixed at the DOE, 253 V limit imposed)
+#     B = realised reading (export up to the DOE, maximised; no voltage limit imposed)
+#   For every customer it lists inverter P and Q, phase-to-neutral and neutral voltage, and
+#   the solver statuses. Result so far: A curtails one inverter (ld2984) to 2347 W where B
+#   gives 2445 W (253.00 vs 253.21 V). Suspected cause: solver tolerance at the 1 MW power
+#   base, still to be confirmed (REPRODUCE.md known issue 20).
+# Inputs:   includes lv9_common.jl (-> the LV9 network) and phase_secure_core.jl
+# Outputs:  results/lv9/lv9_verify_diag.csv (one row per customer); prints the largest
+#           differences
+# How to run (from the repo folder, in `julia +1.11 --project=bmopf`, fresh session):
+#   using Logging; disable_logging(Logging.Warn)
+#   include("scripts/bmopf/lv9/lv9_verify_diag.jl")   then   run_lv9_verify_diag()   (~2 min)
+# Used for: REPRODUCE.md step 33 and known issue 20
+# Credits:  CSIRO LV9 data (CC BY-NC-SA 4.0, copy shipped with BMOPFTools b7aa9a1);
+#           BMOPFTools.jl and PowerOptLab.jl by Frederik Geth; Ipopt
+# =============================================================================
 
 include(joinpath(pwd(), "scripts", "bmopf", "lv9", "lv9_common.jl"))
 include(joinpath(pwd(), "scripts", "bmopf", "phase_secure_core.jl"))
