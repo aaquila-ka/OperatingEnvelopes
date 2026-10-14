@@ -59,6 +59,6 @@ Prysmian and MEC cable datasheets (AS/NZS 3008.1.1 basis), and the AusNet cable 
 
 Claude (Anthropic) was used to help set up, document and check code and to draft figures. Reviews marked "AI-assisted" in the notes were done with it and checked by me. All simulations were run, and all results checked, by the author.
 
-The drawings (not the plots) were made with an AI image tool ([tool name, student to fill]) from my prompts.
+The drawings (not the plots) were made with an AI image tool from my prompts.
 
 If I have missed anyone whose work this repository uses, or credited something incorrectly, please open an issue and I will fix it.
