@@ -1,0 +1,5 @@
+setting,source_pu,truth,issued_kW_records,correct_kW_true,gap_kW,gap_pct,issued_on_true_worst_V,worst_case,worst_case_customers_over_253,cases_over_253,n_cases
+snapshot_1kW,1.030,all22_wrong,4.203082,2.715175,1.487907,54.800,254.6185,"ld1668_load_a+ld2050_load_a+ld24_load_a+ld868_load_a",8,85,85
+snapshot_1kW,1.030,l_3432_wrong,4.203082,2.715175,1.487907,54.800,254.6182,"ld1668_load_a+ld2050_load_a+ld24_load_a+ld868_load_a",1,70,85
+day_1200,1.030,all22_wrong,3.664343,1.946682,1.717661,88.235,255.0513,"ld1668_load_a+ld2050_load_a+ld24_load_a+ld868_load_a",7,85,85
+day_1200,1.030,l_3432_wrong,3.664343,1.946682,1.717661,88.235,255.0514,"ld1668_load_a+ld2050_load_a+ld24_load_a+ld868_load_a",1,70,85
