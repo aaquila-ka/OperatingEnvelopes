@@ -1,18 +1,28 @@
-# scripts/bmopf/doe_source_sweep.jl
+# =============================================================================
+# doe_source_sweep.jl: Case A at source voltages 1.00 to 1.035 pu
 #
-# FIX 3 (after independent review): how much does the chosen source voltage drive the result?
-# For each source voltage, Case A (records 16 mm2, all 22 service cables really 4 mm2) at:
-#   - the 1 kW CSIRO snapshot
-#   - three sunny half-hours of the real day (11:00, 12:00, 13:00, Team-Nando loads)
-# Reports clean DOE, correct DOE, gap (kW), over-promise (%), and what the issued DOE does on the
-# true street with Volt-Watt on: worst case (may export the full DOE) and sun-limited
-# (cap = min(DOE, 5 kW x pv_shape)). Uses the functions of doe_timeseries.jl.
-#
-# RUN (fresh Julia, from C:\thesis\OperatingEnvelopes, julia +1.11 --project=bmopf)
-#   julia> using Logging; disable_logging(Logging.Warn)
-#   julia> include("scripts/bmopf/doe_source_sweep.jl")
-#   julia> run_source_sweep()
-# OUTPUT results/doe_source_sweep.csv
+# What it does (plain English):
+#   Checks how much the chosen source voltage drives the result (added after the
+#   code review). For each source voltage, Case A (records 16 mm2, all 22
+#   service cables really 4 mm2) at:
+#     - the 1 kW CSIRO snapshot
+#     - three sunny half-hours of the real day (11:00, 12:00, 13:00, Team-Nando loads)
+#   Reports the clean DOE (= the DOE issued from the records), correct DOE, gap (kW,
+#   issued minus correct), over-promise (% of the correct DOE), and what the issued DOE
+#   does on the true street with Volt-Watt on: worst case (may export the full DOE) and
+#   sun-limited (cap = min(DOE, 5 kW x pv_shape)). Uses the functions of doe_timeseries.jl.
+#   Snapshot rows have no sun limit: pv_cap_kW and A_pv_V_VW are NaN there and
+#   A_pv_n_over_253 is written as 0, which means "not applicable".
+# Inputs:   includes doe_timeseries.jl (-> doe_record_errors.jl -> doe_common.jl ->
+#           load_lv3.jl); data/profiles/TeamNando_OE1_LoadShapes.txt
+# Outputs:  results/doe_source_sweep.csv (24 rows); prints a table
+# How to run (from the repo folder, in `julia +1.11 --project=bmopf`, fresh session):
+#   using Logging; disable_logging(Logging.Warn)
+#   include("scripts/bmopf/doe_source_sweep.jl")   then   run_source_sweep()
+# Used for: REPRODUCE.md step 11 (12:00 gap 0.14 / 0.17 / 0.71 / 1.63 / 2.29 / 0.60 kW)
+# Credits:  CSIRO LV3 data (CC BY-NC-SA 4.0); Team-Nando OE1-Ideal load profiles
+#           (BSD-3); BMOPFTools.jl and PowerOptLab.jl by Frederik Geth; Ipopt
+# =============================================================================
 
 include(joinpath(pwd(), "scripts", "bmopf", "doe_timeseries.jl"))
 

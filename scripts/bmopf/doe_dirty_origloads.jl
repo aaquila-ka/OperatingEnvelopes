@@ -1,14 +1,31 @@
-# scripts/bmopf/doe_dirty_origloads.jl
+# =============================================================================
+# doe_dirty_origloads.jl: older sensitivity check, Case A/B with the original CSIRO loads
 #
-# PURPOSE (sensitivity check)
-#   Repeat the clean/dirty DOE experiment with the ORIGINAL CSIRO loads
-#   (Master.dss `batchedit load..* kw=1`, OpenDSS default pf 0.88; the same fix
-#   Geth applies in PowerOptLab studies/australian_pv/prepare.jl) instead of my
-#   edited Loads.dss values. If the conclusions hold for both load sets, the
-#   result does not depend on the uncertain origin of my edited loads.
+# What it does (plain English):
+#   Repeats the clean/dirty DOE experiment of doe_dirty_snapshot.jl with the ORIGINAL
+#   CSIRO loads (Master.dss `batchedit load..* kw=1`, OpenDSS default power factor 0.88;
+#   the same step Geth applies in PowerOptLab scripts/australian_pv/prepare.jl, a later
+#   commit than the pinned 953e45c) instead of an earlier edited set of loads, to show
+#   the conclusion does not depend on the load values.
+# Inputs:   includes doe_dirty_snapshot.jl (which itself runs run_dirty_snapshot() again
+#           and rewrites results/doe_dirty_snapshot.csv)
+# Outputs:  results/doe_dirty_snapshot_origloads.csv
+# How to run (from the repo folder, in `julia +1.11 --project=bmopf`):
+#   include("scripts/bmopf/doe_dirty_origloads.jl")   (calls run_origloads() itself)
+# Used for: not part of REPRODUCE.md (superseded: Loads.dss now holds the original
+#           CSIRO loads, so doe_dirty_snapshot.jl already is this check)
+# Credits:  CSIRO LV3 data (CC BY-NC-SA 4.0); BMOPFTools.jl and PowerOptLab.jl by
+#           Frederik Geth; Ipopt
 #
-# RUN    julia> include("scripts/bmopf/doe_dirty_origloads.jl")
-# OUTPUT results/doe_dirty_snapshot_origloads.csv
+# REVIEW NOTES (state of this file):
+#   - run_origloads() calls build_net(swapped = ...), but doe_dirty_snapshot.jl names
+#     that helper make_dirty_net(swapped = ...), so the run stops there as written.
+#   - The CSV header below has 5 columns; run_case() now returns 6 fields (it adds `note`).
+#   - make_net() already checks every load is 1000 W / 539.743 var, so original_loads!()
+#     changes nothing now.
+#   - The existing results/doe_dirty_snapshot_origloads.csv comes from an earlier version
+#     (Case A voltage NaN there; doe_dirty_snapshot.csv has 255.12 V counterfactual).
+# =============================================================================
 
 include(joinpath(pwd(), "scripts", "bmopf", "doe_dirty_snapshot.jl"))   # helpers (also reruns edited-load case)
 

@@ -1,15 +1,29 @@
-# scripts/bmopf/lv9/lv9_check.jl
+# =============================================================================
+# lv9_check.jl: check the LV9 network model in BMOPFTools against OpenDSS
 #
-# STEP f3: load LV9 into BMOPFTools, run analyze(), compute the clean equal DOE at one source
-# voltage, then check the network physics independently in OpenDSS: the 123 inverter outputs
-# (P and Q from the BMOPF DOE solution) are pinned as fixed generators in OpenDSS (PVSystems and
-# InvControl disabled), and the phase-to-neutral voltages of all LV buses are compared.
-#
-# RUN (fresh Julia, from C:\thesis\OperatingEnvelopes, julia +1.11 --project=bmopf)
-#   julia> include("scripts/bmopf/lv9/lv9_check.jl")
-#   julia> run_lv9_check(1.00)          # LV9 1.00 pu ~ LV3 1.025 pu (same LV voltage)
-#   julia> run_lv9_check(1.00; ideal_switches = true)   # OpenDSS switches made ideal, like BMOPF
-# OUTPUT results/lv9/analyze_lv9.txt, results/lv9/lv9_check.csv
+# What it does (plain English): runs BMOPFTools' analyze() on LV9, computes the clean equal
+#   DOE at one source voltage, then rebuilds the same operating point in OpenDSS: the 123
+#   inverter outputs (P and Q from the BMOPF DOE solution) are pinned as fixed generators
+#   (PVSystems and InvControl disabled) and the phase-to-neutral voltages of all LV buses
+#   (774 values) are compared. Option ideal_switches = true makes the OpenDSS switches
+#   (1 mOhm in the dataset) near-ideal, matching BMOPFTools' ideal switches.
+# Inputs:   data/networks/LV9_258bus_withPV/; includes lv9_common.jl; uses OpenDSSDirect.jl.
+# Outputs:  results/lv9/analyze_lv9.txt, results/lv9/lv9_check.csv (default) or
+#           results/lv9/lv9_check_idealsw.csv (ideal_switches = true); prints the DOE, the
+#           voltage ranges, mean / max difference and OpenDSS losses. (The final "written"
+#           message always names lv9_check.csv, also in the ideal-switch run.)
+# How to run (from the repo folder, in `julia +1.11 --project=bmopf`):
+#   include("scripts/bmopf/lv9/lv9_check.jl")   then
+#   run_lv9_check(1.00)                            # dataset switches (1 mOhm in OpenDSS)
+#   run_lv9_check(1.00; ideal_switches = true)     # near-ideal switches in both tools
+#   (LV9 1.00 pu gives the same transformer no-load voltage as LV3 1.025 pu)
+# Used for: REPRODUCE.md step 20 (section 4 row "LV9 clean DOE"; known issue 16).
+# Credits:  CSIRO LV9 feeder data ("Realistic Australian MV feeder with associated LV
+#           feeders" v1, doi 10.25919/ghnz-bk28, CC BY-NC-SA 4.0; copy shipped with
+#           BMOPFTools b7aa9a1, test/data/LV/LV9_258bus); BMOPFTools.jl (b7aa9a1) and
+#           PowerOptLab.jl (953e45c) by Frederik Geth; JuMP and Ipopt;
+#           OpenDSS (EPRI) via OpenDSSDirect.jl
+# =============================================================================
 
 include(joinpath(pwd(), "scripts", "bmopf", "lv9", "lv9_common.jl"))
 using OpenDSSDirect

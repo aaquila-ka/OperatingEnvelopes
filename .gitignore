@@ -14,3 +14,7 @@ data/raw/
 .DS_Store
 Thumbs.db
 data/profiles/pool/*.npy
+
+# Python and optional plot font
+__pycache__/
+figures/xkcd-script.ttf

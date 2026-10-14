@@ -1,9 +1,21 @@
-# ============================================================
-# 03_diagnose_zero_volts.jl
-# Purpose: find out WHY bus voltages come back as zero.
-#          Tests the warm-up hypothesis and inspects solver
-#          state directly.
-# ============================================================
+# =============================================================================
+# 03_diagnose_zero_volts.jl: diagnose why OpenDSS bus voltages came back as zero
+#
+# What it does (plain English): loads LV3 three different ways (single solve,
+#   second solve on the same circuit, warm-up solve then reload) and after each
+#   prints the convergence flag, iteration count, total power and how many
+#   node voltages are non-zero. Finally it reads one bus (b804, the 11 kV side
+#   of the transformer) directly, as a second way of reading voltages.
+#   This is the test behind the "warm-up solve" used in scripts 02-05,
+#   count_linecodes.jl and sensitivity_service_cable.jl.
+# Inputs:   data/networks/LV3_55bus_withPV/Master.dss
+# Outputs:  printed only, no files written
+# How to run (from the repo folder, in `julia +1.9 --project=.`; this is the
+#   older top-level project, Julia 1.9.4 Manifest, not bmopf/):
+#   include("scripts/03_diagnose_zero_volts.jl")
+# Used for: early exploration (OpenDSSDirect troubleshooting), not used for thesis results
+# Credits:  CSIRO LV3 network data (LV3_55bus_withPV); OpenDSS (EPRI) via OpenDSSDirect.jl
+# =============================================================================
 
 using OpenDSSDirect
 

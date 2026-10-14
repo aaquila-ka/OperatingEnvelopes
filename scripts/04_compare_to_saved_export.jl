@@ -1,14 +1,32 @@
-# ============================================================
-# 04_compare_to_saved_export.jl
-# Compares today's solve against the OpenDSS export saved in
-# April 2026, and computes BOTH phase-to-ground and
-# phase-to-neutral statistics.
+# =============================================================================
+# 04_compare_to_saved_export.jl: voltage statistics from a SAVED OpenDSS export
+#
+# What it does (plain English): reads the voltage export file saved earlier in
+#   the network folder (written by runOpenDSS.jl), keeps the 55 LV buses and
+#   prints phase-to-ground and phase-to-neutral statistics (mean, sd, min,
+#   max, count above 253 V) and the neutral voltage range.
+#   It does NOT solve the network: there is no new solve in this script, only
+#   the saved file is read (OpenDSSDirect is loaded but not used).
+#   The saved export reflects an earlier model state: source bus 6795.41 V
+#   (= 1.07 pu), transformer star point tied to ground and PV connected
+#   phase-to-ground (see scripts/notes/worklog.md). It does not match the
+#   current Master.dss (1.00 pu, star point on the neutral, PV phase-to-neutral).
 #
 # Phase-to-ground: |V_phase| relative to earth
 # Phase-to-neutral: |V_phase - V_neutral| as phasors
 # These differ on a four-wire model because the neutral is
 # not at earth potential.
-# ============================================================
+# The code assumes columns Node1..Node4 are nodes 1, 2, 3, 4 in that order;
+# this holds for all 55 LV rows of the saved file.
+#
+# Inputs:   data/networks/LV3_55bus_withPV/lv3_55bus_EXP_VOLTAGES.csv
+# Outputs:  printed only, no files written
+# How to run (from the repo folder, in `julia +1.9 --project=.`; this is the
+#   older top-level project, Julia 1.9.4 Manifest, not bmopf/):
+#   include("scripts/04_compare_to_saved_export.jl")
+# Used for: early exploration, not used for thesis results
+# Credits:  CSIRO LV3 network data (LV3_55bus_withPV); OpenDSS (EPRI) via OpenDSSDirect.jl
+# =============================================================================
 
 using OpenDSSDirect, DataFrames, CSV, Statistics
 

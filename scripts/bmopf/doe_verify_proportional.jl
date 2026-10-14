@@ -1,19 +1,26 @@
-# scripts/bmopf/doe_verify_proportional.jl
+# =============================================================================
+# doe_verify_proportional.jl: checking cable records one by one under PROPORTIONAL sharing
 #
-# STEP (d): checking cable records under PROPORTIONAL sharing.
-# Same idea as Part B of doe_robust.jl (12 customer cables checked one by one; unchecked ones
-# assumed to be the thinnest type, 4 mm2, so the DOE is always safe), but each customer's limit
-# is set by PowerOptLab fairness = :proportional instead of :equal.
-# Reports the TOTAL safe export (sum of the 12 limits) after k checks, as a share of the total
-# when all records are known to be right, plus the smallest limit.
-# For comparison the equal-rule totals (12 x the equal DOE) are printed from the same runs.
-# Settings: 1 kW snapshot and the 12:00 loads; source 1.03 pu.
+# What it does (plain English):
+#   Same idea as Part B of doe_robust.jl (the 12 customer cables are checked one by one;
+#   unchecked ones are assumed to be the thinnest type, 4 mm2, so the DOE is safe up to the
+#   small non-monotone effect noted in doe_robust.jl), but each customer's limit is set by
+#   PowerOptLab fairness = :proportional instead of :equal. Reports the TOTAL safe export (sum
+#   of the 12 limits) after k checks as a share of the total when all records are right, plus
+#   the smallest limit. Equal-rule totals (12 x the equal DOE) are computed alongside.
+#   Orders: OPF-ranked and shortest first. Settings: 1 kW snapshot and 12:00 loads; 1.03 pu.
 #
-# RUN (fresh Julia, from C:\thesis\OperatingEnvelopes, julia +1.11 --project=bmopf)
-#   julia> using Logging; disable_logging(Logging.Warn)
-#   julia> include("scripts/bmopf/doe_verify_proportional.jl")
-#   julia> run_verify_proportional()
-# OUTPUT results/doe_verify_proportional.csv
+# Inputs:   LV3 network and house profiles. Includes doe_robust.jl (-> doe_timeseries.jl ->
+#           doe_record_errors.jl -> doe_common.jl -> load_lv3.jl).
+# Outputs:  results/doe_verify_proportional.csv (52 rows); prints a table per order.
+# How to run (from the repo folder, in `julia +1.11 --project=bmopf`):
+#   using Logging; disable_logging(Logging.Warn)
+#   include("scripts/bmopf/doe_verify_proportional.jl")   then   run_verify_proportional()
+# Used for: REPRODUCE.md step 16 (section 4 row "Checking under proportional, 12:00");
+#           DATA_CARD.md file 15.
+# Credits:  CSIRO LV3 data (CC BY-NC-SA 4.0); BMOPFTools.jl and PowerOptLab.jl by Frederik
+#           Geth; Ipopt; Team-Nando OE1-Ideal profiles (BSD-3, AusNet smart-meter data).
+# =============================================================================
 
 include(joinpath(pwd(), "scripts", "bmopf", "doe_robust.jl"))
 

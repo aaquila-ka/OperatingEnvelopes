@@ -1,19 +1,29 @@
-# scripts/bmopf/doe_clearsky.jl
+# =============================================================================
+# doe_clearsky.jl: the full-day run repeated with an assumed clear-sky solar shape
 #
-# STEP (c): a clear-sky day as an upper bound for the sun-limited results.
-# Same 12 house profiles and settings as doe_timeseries.jl (1.03 pu, equal allocation, Case A =
-# all 22 service cables really 4 mm2). Only the solar shape changes:
-#   clear(t) = PEAK x sin(pi x (h - rise) / (set - rise)) between rise and set, else 0
-#   rise and set are taken from the measured Team-Nando shape (first/last half-hour with sun),
-#   h = middle of the half-hour; PEAK = 0.85 of the 5 kW rating (ASSUMPTION: typical clear-sky
-#   summer peak of rooftop PV after temperature and system losses; the measured day peaks at 0.72).
-# The DOEs do not depend on the sun (they are permissions); only the sun-limited reading changes.
+# What it does (plain English):
+#   Same 12 house profiles and settings as doe_timeseries.jl (1.03 pu, equal sharing, Case A =
+#   all 22 service cables really 4 mm2). Only the solar shape changes, to give an upper bound
+#   for the sun-limited results:
+#     clear(t) = PEAK x sin(pi x (h - rise) / (set - rise)) between rise and set, else 0
+#     rise and set are taken from the measured Team-Nando shape (first / last half-hour with
+#     sun: 05:30 to 21:00), h = middle of the half-hour; PEAK = 0.85 of the 5 kW rating
+#     (ASSUMPTION: typical clear-sky summer peak of rooftop PV after temperature and system
+#     losses; the measured day peaks at 0.72).
+#   The DOEs do not depend on the sun (they are permissions); only the sun-limited reading
+#   changes. The measured-day voltage is printed alongside for comparison (not saved).
 #
-# RUN (fresh Julia, from C:\thesis\OperatingEnvelopes, julia +1.11 --project=bmopf)
-#   julia> using Logging; disable_logging(Logging.Warn)
-#   julia> include("scripts/bmopf/doe_clearsky.jl")
-#   julia> run_clearsky()                      # PEAK = 0.85
-# OUTPUT results/doe_clearsky.csv  (same columns as results/doe_timeseries.csv)
+# Inputs:   LV3 network and house profiles. Includes doe_timeseries.jl.
+# Outputs:  results/doe_clearsky.csv (same columns as doe_timeseries.csv; only the 31 sunny
+#           half-hours); prints a table and the count of half-hours above 253 V.
+# How to run (from the repo folder, in `julia +1.11 --project=bmopf`):
+#   using Logging; disable_logging(Logging.Warn)
+#   include("scripts/bmopf/doe_clearsky.jl")   then   run_clearsky()        # PEAK = 0.85
+# Used for: REPRODUCE.md step 15 (section 4 row "Clear-sky day"; section 6 item 14);
+#           DATA_CARD.md file 14.
+# Credits:  CSIRO LV3 data (CC BY-NC-SA 4.0); BMOPFTools.jl and PowerOptLab.jl by Frederik
+#           Geth; Ipopt; Team-Nando OE1-Ideal profiles (BSD-3, AusNet smart-meter data).
+# =============================================================================
 
 include(joinpath(pwd(), "scripts", "bmopf", "doe_timeseries.jl"))
 

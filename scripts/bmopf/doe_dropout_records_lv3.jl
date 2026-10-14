@@ -1,23 +1,34 @@
-# scripts/bmopf/doe_dropout_records_lv3.jl
+# =============================================================================
+# doe_dropout_records_lv3.jl: headline result redone with the dropout-secure DOE (LV3)
 #
-# HEADLINE RESULT, REDONE WITH THE SAFEST DOE (LV3).
-# The utility only knows its records (every service cable recorded as 16 mm2). It computes the
-# DROPOUT-SECURE equal DOE on those records (results/doe_dropout_secure_lv3.csv). The real
-# network has 4 mm2 cables. Questions:
-#   (1) Applied on the TRUE network, does the issued DOE still break 253 V, and in how many of
-#       the 85 cases (nobody dropped + 7 phase patterns + every 1 or 2 customers dropped)?
-#   (2) What would the dropout-secure DOE have been with CORRECT records, i.e. how much too
-#       generous is the issued one?
-# Two "true" networks: all 22 service segments are 4 mm2 ("all22_wrong"), and only the
-# critical customer cable l_3432 is 4 mm2 ("l_3432_wrong"). Settings: 1 kW snapshot and 12:00,
-# 1.03 pu. Realised reading as before (Volt-VAr, Volt-Watt, 5 kVA kept; no voltage limit).
+# What it does (plain English):
+#   The utility only knows its records (every service cable recorded as 16 mm2) and computes
+#   the DROPOUT-SECURE equal DOE on them (read from results/doe_dropout_secure_lv3.csv). The
+#   real network has 4 mm2 cables. Questions:
+#     (1) Applied on the TRUE network, does the issued DOE still break 253 V, and in how many
+#         of the 85 cases (nobody dropped + 6 other phase patterns + every 1 or 2 customers
+#         dropped)?
+#     (2) What would the dropout-secure DOE have been with CORRECT records, i.e. how much too
+#         generous is the issued one? (gap = issued - correct; gap_pct = gap / correct x 100)
+#   Two "true" networks: all 22 service segments 4 mm2 ("all22_wrong"), and only the critical
+#   customer cable l_3432 4 mm2 ("l_3432_wrong"). Settings: 1 kW snapshot and 12:00, 1.03 pu.
+#   Realised reading as before (Volt-VAr, Volt-Watt, 5 kVA kept; no voltage limit).
+#   The correct DOE is found by bisection between 0 and the issued DOE (12 steps, grid about
+#   issued / 4096 = 0.001 kW), so it can never come out above the issued DOE, and two truths
+#   that give the same pass/fail answers land on the same grid value.
 #
-# RUN (fresh Julia, from C:\thesis\OperatingEnvelopes, julia +1.11 --project=bmopf)
-#   julia> using Logging; disable_logging(Logging.Warn)
-#   julia> include("scripts/bmopf/doe_dropout_records_lv3.jl")
-#   julia> run_dropout_records_lv3()            # about 10-20 min
-# NEEDS   results/doe_dropout_secure_lv3.csv  (from run_dropout_secure_lv3)
-# OUTPUT  results/doe_dropout_records_lv3.csv
+# Inputs:   results/doe_dropout_secure_lv3.csv (from run_dropout_secure_lv3, REPRODUCE step
+#           26), LV3 network and house profiles. Includes doe_dropout_lv3.jl.
+# Outputs:  results/doe_dropout_records_lv3.csv (4 rows); prints two lines per truth.
+# How to run (from the repo folder, in `julia +1.11 --project=bmopf`):
+#   using Logging; disable_logging(Logging.Warn)
+#   include("scripts/bmopf/doe_dropout_records_lv3.jl")   then   run_dropout_records_lv3()
+#   (about 6 min)
+# Used for: REPRODUCE.md step 28 (section 4 row "LV3 headline, dropout-secure");
+#           DATA_CARD.md file 22.
+# Credits:  CSIRO LV3 data (CC BY-NC-SA 4.0); BMOPFTools.jl and PowerOptLab.jl by Frederik
+#           Geth; Ipopt; Team-Nando OE1-Ideal profiles (BSD-3, AusNet smart-meter data).
+# =============================================================================
 
 include(joinpath(pwd(), "scripts", "bmopf", "doe_dropout_lv3.jl"))
 

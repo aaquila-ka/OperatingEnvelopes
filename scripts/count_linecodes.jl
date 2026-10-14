@@ -1,22 +1,26 @@
 # =============================================================================
-# count_linecodes.jl
+# count_linecodes.jl: which cable types (line codes) LV3 uses, how many segments, how long
 #
-# PURPOSE
-#   Find out which cable types the LV3_55bus_withPV network actually uses,
-#   how many segments use each, and how much total length each accounts for.
-#
-# WHY THIS MATTERS
-#   The thesis perturbs cable impedance records. To do that we first need to
-#   know what is in the network's cable catalogue and which entries are really
-#   in use. The Linecodes.dss file lists 22 cable types, but a network only
-#   uses a handful. Perturbing an unused type would do nothing.
-#
-# OUTPUT
-#   results/linecode_usage.csv
-#
-# HOW TO RUN
-#   From the Julia REPL, with the project activated:
-#       include("scripts/count_linecodes.jl")
+# What it does (plain English): loads LV3 in OpenDSS, walks every Line object
+#   and counts, per line code, the number of segments, how many are switches,
+#   the total length and the length unit. The thesis perturbs cable impedance
+#   records, so we first need to know which of the 22 cable types in
+#   Linecodes.dss are really in use (perturbing an unused type does nothing).
+#   Result: 22 service segments use ugsc_16cu (the cable type perturbed in the
+#   thesis), 14 use uglv_240al, 11 use ughv_400al (10 short stubs plus the
+#   0.1 m for_energymeter dummy line), and 8 switches have no line code.
+# Inputs:   data/networks/LV3_55bus_withPV/Master.dss
+# Outputs:  results/linecode_usage.csv (total_length in the line's length
+#           unit, units code 3 = km); also prints circuit facts
+# How to run (from the repo folder, in `julia +1.9 --project=.`; this is the
+#   older top-level project, Julia 1.9.4 Manifest, not bmopf/):
+#   include("scripts/count_linecodes.jl")
+#   The MASTER and OUT paths below are hard-coded to C:\thesis\OperatingEnvelopes;
+#   edit them if the repo is elsewhere.
+# Used for: choosing the perturbation target (service cables, 16 mm2 vs 4 mm2);
+#   background for REPRODUCE.md section 5 "Cable error"; not a numbered
+#   REPRODUCE.md step
+# Credits:  CSIRO LV3 network data (LV3_55bus_withPV); OpenDSS (EPRI) via OpenDSSDirect.jl
 #
 # Author: Aaquila Konnimera Akbar
 # =============================================================================
@@ -36,13 +40,13 @@ const OUT    = raw"C:\thesis\OperatingEnvelopes\results\linecode_usage.csv"
 
 Load an OpenDSS network file and solve it.
 
-KNOWN BUG BEING WORKED AROUND
+OBSERVED BEHAVIOUR WORKED AROUND
   In OpenDSSDirect v0.9.9 on Julia 1.9.4, the first Solve() after a
   Clear + Redirect reports Converged() == true but leaves every node voltage
   sitting at exactly zero. The circuit is loaded but the solution is empty.
 
   The fix is to throw that first solve away, Clear and Redirect again, then
-  solve for real. Because Converged() lies in this situation, we must check
+  solve for real. Because Converged() still reports true in this situation, we must check
   the voltages themselves rather than trusting the convergence flag. That is
   what the @assert does.
 
@@ -104,6 +108,9 @@ function linecode_usage()
         # present, which lets us accumulate without initialising every key first.
         counts[lc]   = get(counts,  lc, 0)   + 1
         lengths[lc]  = get(lengths, lc, 0.0) + Lines.Length()
+        # Lines.Units() is the unit of this line's LENGTH (km for every line
+        # in LV3), not the impedance unit of its line code (most line codes
+        # in Linecodes.dss are in ohm/kft, two are in ohm/km).
         units[lc]    = Lines.Units()
         switches[lc] = get(switches, lc, 0) + (Lines.IsSwitch() ? 1 : 0)
 
@@ -130,8 +137,9 @@ end
 
 load_circuit(MASTER)
 
-# Sanity checks on the loaded circuit. max |V| should be about 6795 V, which
-# is 11 kV / sqrt(3) x 1.07, confirming the source is wired as expected.
+# Sanity checks on the loaded circuit. max |V| is the 11 kV source phase
+# voltage: about 6351 V (11 kV / sqrt(3) x 1.00) with the current Master.dss
+# at 1.00 pu. The 6795 V noted in the worklog was with the source at 1.07 pu.
 println("converged: ", Solution.Converged())
 println("max |V|:   ", round(maximum(abs.(Circuit.AllBusVolts())), digits=1))
 println("n lines:   ", Lines.Count())
@@ -143,6 +151,9 @@ rows = linecode_usage()
 println(rows)
 
 println("\ntotal switches: ", sum(rows.n_switches))
+# Note: the count below (Lines minus switches = 47) still includes the
+# 0.1 m for_energymeter dummy line (a meter connection, not a cable), so the
+# real cable segments are 46.
 println("real cable segments: ", Lines.Count() - sum(rows.n_switches))
 
 mkpath(dirname(OUT))                   # create results/ if it does not exist

@@ -1,13 +1,30 @@
-# scripts/bmopf/doe_common.jl
+# =============================================================================
+# doe_common.jl: shared helper functions for all LV3 DOE scripts
 #
-# Shared helpers for the DOE scripts. Defines functions only; runs nothing
-# except loading load_lv3.jl once per Julia session.
+# What it does (plain English):
+#   Defines the building blocks the other scripts reuse: build a fresh LV3 network at a
+#   chosen source voltage, put the 207-253 V phase-to-neutral limits on the 12 customer
+#   connection points, describe the 12 solar connection points, solve the equal-share
+#   DOE (dynamic operating envelope = the export limit each home gets), and find the
+#   highest phase-to-neutral voltage. Defines functions only; it runs nothing except
+#   loading load_lv3.jl once per Julia session.
+# Inputs:   includes scripts/bmopf/load_lv3.jl (which reads the LV3 .dss files)
+# Outputs:  none of its own (load_lv3.jl rewrites results/analyze_lv3_after_ctrlfix.txt
+#           the first time it is included)
+# How to run (from the repo folder, in `julia +1.11 --project=bmopf`):
+#   include("scripts/bmopf/doe_common.jl")   then e.g.   net = make_net(1.03); r = doe(net, connection_points(net))
+# Used for: every LV3 step in REPRODUCE.md (included directly or through another script),
+#           and by lv9/lv9_common.jl
+# Credits:  CSIRO LV3 data (CC BY-NC-SA 4.0); BMOPFTools.jl and PowerOptLab.jl by
+#           Frederik Geth; JuMP; Ipopt
+# =============================================================================
 #
-# Conventions (checked against BMOPFTools b7aa9a1 / PowerOptLab 953e45c, 13 Oct):
+# Conventions (checked against BMOPFTools b7aa9a1 / PowerOptLab 953e45c):
 #   - voltage_source "v_magnitude": phase-to-neutral volts, 4 entries, neutral 0.
+#     1.00 pu (per unit) = 11 kV line-to-line = 6350.85 V phase-to-neutral.
 #   - vpn_min / vpn_max: SI volts, one entry per phase in terminal_names order (neutral excluded).
-#   - DOE snapshots are in SI (V, W, var).
-#   - Loads: ORIGINAL CSIRO values, 1 kW + 0.539743 kvar (pf 0.88), written in Loads.dss.
+#   - DOE snapshots are in SI units (V, W, var); envelope values are in W (divide by 1000 for kW).
+#   - Loads: ORIGINAL CSIRO values, 1 kW + 0.539743 kvar (power factor 0.88), written in Loads.dss.
 
 using BMOPFTools, PowerOptLab, JuMP, Ipopt, Printf
 

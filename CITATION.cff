@@ -1,0 +1,36 @@
+cff-version: 1.2.0
+message: "If you use this code or results, please cite it as below, and also cite the CSIRO dataset and the tools listed in ACKNOWLEDGEMENTS.md."
+title: "Learning dynamic operating envelopes from imperfect data: code and results"
+type: software
+authors:
+  - given-names: Aaquila Konnimera
+    family-names: Akbar
+    affiliation: "The University of Queensland"
+repository-code: "https://github.com/aaquila-ka/OperatingEnvelopes"
+license: MIT
+keywords:
+  - dynamic operating envelopes
+  - distribution networks
+  - four-wire optimal power flow
+  - network model errors
+  - rooftop solar
+references:
+  - type: dataset
+    title: "Realistic Australian medium voltage feeder with associated low voltage feeders"
+    authors:
+      - family-names: Geth
+        given-names: F.
+      - family-names: Heidari
+        given-names: R.
+      - family-names: Clark
+        given-names: J.
+      - family-names: Lucas
+        given-names: K.
+      - family-names: Nimalsiri
+        given-names: N.
+    publisher:
+      name: CSIRO
+    year: 2025
+    version: "1"
+    doi: 10.25919/ghnz-bk28
+    license: CC-BY-NC-SA-4.0

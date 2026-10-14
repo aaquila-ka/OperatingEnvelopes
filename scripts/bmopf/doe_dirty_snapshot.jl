@@ -1,17 +1,31 @@
-# scripts/bmopf/doe_dirty_snapshot.jl
+# =============================================================================
+# doe_dirty_snapshot.jl: wrong cable records, Case A and Case B, 1 kW snapshot (bound-point)
 #
-# Wrong cable records experiment (one snapshot), source 1.03 pu, original CSIRO loads,
-# equal allocation, 207-253 V phase-to-neutral at customer connections.
-#   Service cables: records say 16 mm2 Cu (ugsc_16cu, 22 segments) vs 4 mm2 Cu (uglv_4cu, R about 3.07x).
-#   CASE A (dangerous): truth 4 mm2, records 16 mm2 -> issued DOE too generous.
-#   CASE B (wasteful):  truth 16 mm2, records 4 mm2 -> issued DOE too cautious.
-# The issued (wrong-records) DOE is applied to the TRUE network with limits and Volt-Watt
-# removed (P fixed exactly at the issued limit; verify pins P by equality, checked in
-# PowerOptLab 953e45c). If that is impossible within the 5 kVA inverter rating under
-# Volt-VAr, it is reported as "undeliverable", and a counterfactual voltage is computed
-# with the inverter rating relaxed but the SAME Volt-VAr reactive power in var.
-# RUN    julia> include("scripts/bmopf/doe_dirty_snapshot.jl")
-# OUTPUT results/doe_dirty_snapshot.csv
+# What it does (plain English):
+#   Source 1.03 pu, original CSIRO loads, equal allocation, 207-253 V phase-to-neutral
+#   at customer connections. Service cables: records say 16 mm2 Cu (ugsc_16cu, 22
+#   segments) vs 4 mm2 Cu (uglv_4cu, resistance about 3.07x).
+#     CASE A (dangerous): truth 4 mm2, records 16 mm2 -> issued DOE too generous.
+#     CASE B (wasteful):  truth 16 mm2, records 4 mm2 -> issued DOE too cautious.
+#   The issued (wrong-records) DOE is then applied to the TRUE network with voltage
+#   limits and Volt-Watt removed (P fixed exactly at the issued limit; verify pins P by
+#   equality, checked in PowerOptLab 953e45c). If that is impossible within the 5 kVA
+#   inverter rating under Volt-VAr, it is reported as "undeliverable", and a
+#   counterfactual voltage is computed with the inverter rating relaxed but the SAME
+#   Volt-VAr reactive power in var. This is the older "bound-point" reading; the
+#   realised reading (Volt-Watt on) for Case A is in doe_critical_cables.csv,
+#   doe_record_errors.csv and doe_source_sweep.csv (254.60 V).
+# Inputs:   includes doe_common.jl (which loads load_lv3.jl and the LV3 .dss files)
+# Outputs:  results/doe_dirty_snapshot.csv (case, correct_limit_kW,
+#           issued_limit_kW, true_street_max_vpn_V = bound-point reading, where, note);
+#           prints per-house tables
+# How to run (from the repo folder, in `julia +1.11 --project=bmopf`):
+#   include("scripts/bmopf/doe_dirty_snapshot.jl")   (calls run_dirty_snapshot() itself)
+# Used for: REPRODUCE.md step 4; Case A correct 2.734 kW, issued 4.529 kW (+65.6 %),
+#           bound-point 255.12 V (counterfactual); Case B -39.6 % (mirror of Case A)
+# Credits:  CSIRO LV3 data and line codes (CC BY-NC-SA 4.0); BMOPFTools.jl and
+#           PowerOptLab.jl by Frederik Geth; Ipopt
+# =============================================================================
 
 include(joinpath(pwd(), "scripts", "bmopf", "doe_common.jl"))
 

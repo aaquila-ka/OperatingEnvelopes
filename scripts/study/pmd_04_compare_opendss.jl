@@ -1,11 +1,25 @@
-# ============================================================
-# pmd_04_compare_opendss.jl
-# Solve the SAME network in both PMD and OpenDSS, compare.
+# =============================================================================
+# pmd_04_compare_opendss.jl: solve the same 3-bus network in PMD and OpenDSS and compare
 #
-# Two independent tools on identical input should agree.
-# If they do not, one of them is being driven incorrectly,
-# and it is better to find that out on a 3-bus network.
-# ============================================================
+# What it does (plain English): solves PMD's 3-bus test network
+#   (case3_unbalanced.dss) once with PowerModelsDistribution + Ipopt and once
+#   with OpenDSS (with the warm-up solve), and prints the voltage magnitudes
+#   of each bus side by side in volts (phase-to-ground).
+#   Two independent tools on identical input should agree. If they do not,
+#   one of them is being driven incorrectly, and it is better to find that
+#   out on a 3-bus network.
+#   The two lists are printed per bus as returned by each tool; they are not
+#   matched terminal by terminal, so a bus can show a different number of
+#   entries in each column (e.g. if one tool lists a grounded terminal).
+# Inputs:   <PMD package folder>/test/data/opendss/case3_unbalanced.dss
+# Outputs:  printed only, no files written
+# How to run (from the repo folder, in `julia +1.9 --project=.`; the older
+#   top-level PowerModelsDistribution project, not bmopf/):
+#   include("scripts/study/pmd_04_compare_opendss.jl")
+# Used for: learning PMD (study exercise), not used for thesis results
+# Credits:  PowerModelsDistribution.jl (PMD) and its test network
+#   case3_unbalanced.dss; Ipopt (via Ipopt.jl); OpenDSS (EPRI) via OpenDSSDirect.jl
+# =============================================================================
 
 using PowerModelsDistribution
 using Ipopt

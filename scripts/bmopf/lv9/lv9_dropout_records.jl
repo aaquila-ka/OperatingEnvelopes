@@ -1,25 +1,32 @@
-# scripts/bmopf/lv9/lv9_dropout_records.jl
+# =============================================================================
+# lv9_dropout_records.jl: LV9 headline result redone with the dropout-secure DOE
 #
-# HEADLINE RESULT ON LV9, REDONE WITH THE SAFEST DOE (same idea as doe_dropout_records_lv3.jl).
-# The utility only knows its records (16 mm2 everywhere the 16 mm2 code is used). It issues the
-# DROPOUT-SECURE equal DOE computed on those records (results/lv9/lv9_dropout_secure.csv).
-# The real network has 4 mm2 cables in some places ("truths"):
-#   "upstream_12"  the 12 shared 16 mm2 cables are really 4 mm2
-#   "l_2373"       only the shared cable l_2373 (43 customers behind it) is really 4 mm2
-#   "drops_123"    every customer drop is really 4 mm2 (optional, add to `truths` if wanted)
-# For each truth:
-#   (1) the issued DOE is applied on the TRUE network for 130 cases (nobody dropped, 6 phase
-#       patterns, each single customer dropped) -> worst voltage, cases over 253 V;
-#   (2) the CORRECT dropout-secure DOE on the true network: bisection on nobody + 6 phase
-#       patterns (the binding cases on LV9), then a final check over all 130 cases.
-# Voltage limits only (no thermal limits). Realised reading (Volt-VAr, Volt-Watt, 5 kVA kept).
-#
-# RUN (fresh Julia, from C:\thesis\OperatingEnvelopes, julia +1.11 --project=bmopf)
-#   julia> using Logging; disable_logging(Logging.Warn)
-#   julia> include("scripts/bmopf/lv9/lv9_dropout_records.jl")
-#   julia> run_lv9_dropout_records()          # 0.94 and 1.00 pu, 2 truths (~30-45 min)
-# NEEDS   results/lv9/lv9_dropout_secure.csv  (from run_lv9_dropout_secure)
-# OUTPUT  results/lv9/lv9_dropout_records.csv
+# What it does (plain English): same idea as doe_dropout_records_lv3.jl. The utility only
+#   knows its records (16 mm2 wherever the 16 mm2 code is used) and issues the DROPOUT-SECURE
+#   equal DOE computed on those records (results/lv9/lv9_dropout_secure.csv). The real
+#   network has 4 mm2 cables in some places ("truths"):
+#     "upstream_12"  the 12 shared 16 mm2 segments are really 4 mm2
+#     "l_2373"       only the shared segment l_2373 (43 customers behind it) is really 4 mm2
+#     "drops_123"    every customer drop is really 4 mm2 (optional, add to `truths` if wanted)
+#   For each truth: (1) the issued DOE is applied on the TRUE network for the 130 cases
+#   (nobody dropped, 6 phase patterns, each single customer dropped) -> worst voltage and
+#   cases over 253 V; (2) the CORRECT dropout-secure DOE on the true network, by bisection on
+#   nobody + 6 phase patterns (the binding cases on LV9), then a final check over all 130.
+#   Gap = issued (records) minus correct. Voltage limits only; realised reading.
+# Inputs:   results/lv9/lv9_dropout_secure.csv (from run_lv9_dropout_secure, step 29);
+#           data/networks/LV9_258bus_withPV/; includes lv9_core.jl and lv9_dropout.jl.
+# Outputs:  results/lv9/lv9_dropout_records.csv; results printed per truth.
+# How to run (from the repo folder, in `julia +1.11 --project=bmopf`):
+#   using Logging; disable_logging(Logging.Warn)
+#   include("scripts/bmopf/lv9/lv9_dropout_records.jl")   then
+#   run_lv9_dropout_records()          # 0.94 and 1.00 pu, 2 truths
+# Used for: REPRODUCE.md step 30 (section 4 row "LV9 headline, dropout-secure": gaps
+#           0.871 kW at 0.94 pu and 0.123 kW at 1.00 pu with the 12 shared segments wrong).
+# Credits:  CSIRO LV9 feeder data ("Realistic Australian MV feeder with associated LV
+#           feeders" v1, doi 10.25919/ghnz-bk28, CC BY-NC-SA 4.0; copy shipped with
+#           BMOPFTools b7aa9a1, test/data/LV/LV9_258bus); BMOPFTools.jl (b7aa9a1) and
+#           PowerOptLab.jl (953e45c) by Frederik Geth; JuMP and Ipopt
+# =============================================================================
 
 include(joinpath(pwd(), "scripts", "bmopf", "lv9", "lv9_core.jl"))       # segment_sets, set_small!
 include(joinpath(pwd(), "scripts", "bmopf", "lv9", "lv9_dropout.jl"))    # lv9_dropout_sets, lv9_check
@@ -50,7 +57,9 @@ function run_lv9_dropout_records(; pus = [0.94, 1.00], truths = ["upstream_12", 
             tnet = set_small!(make_net(pu), truth_ids[tname])        # realised() copies it, so one is enough
             tb = time()
             on_true = lv9_check(tnet, ids, sets, issued; early_stop = false)
-            # correct DOE: bisection 0 .. issued on the 7 binding cases, then full check
+            # correct DOE: bisection 0 .. issued on the 7 binding cases, then full check.
+            # Capped at the issued DOE, so the gap is never negative ("no gap" means gap <= 0);
+            # 10 steps give a resolution of about issued / 1024 (~2 W at 0.94 pu), on the safe side.
             lo, hi = 0.0, issued
             if lv9_check(tnet, ids, psets, hi).ok
                 lo = hi

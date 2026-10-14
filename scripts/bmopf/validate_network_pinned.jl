@@ -1,19 +1,32 @@
-# scripts/bmopf/validate_network_pinned.jl
+# =============================================================================
+# validate_network_pinned.jl: BMOPFTools vs OpenDSS on LV3 with the same pinned PV outputs
 #
-# PURPOSE (Aim 1) – validation in two independent parts
-#   (A) NETWORK PHYSICS: each BMOPF inverter is replaced by a fixed injection equal
-#       to OpenDSS's PV output, so both tools solve the SAME determined problem.
-#       Phase-to-neutral and neutral-to-ground magnitudes compared at all LV buses.
-#   (B) INVERTER BEHAVIOUR: OpenDSS PV P and Q checked against the AS/NZS 4777.2 curves
-#       evaluated at PHASE-TO-GROUND voltage (what OpenDSS InvControl monitors),
-#       with the 5 kVA limit (reactive priority) applied to P.
+# What it does (plain English): validation in two independent parts (thesis Aim 1).
+#   (A) NETWORK PHYSICS: each BMOPF inverter is replaced by a fixed injection equal to
+#       OpenDSS's PV output, so both tools solve the SAME fully determined problem.
+#       Phase-to-neutral and neutral-to-ground magnitudes are compared at all LV buses, and a
+#       loss breakdown is printed (lines, transformer, earthing shunts, 1 mOhm switches).
+#   (B) INVERTER BEHAVIOUR: OpenDSS PV P and Q are checked against the AS/NZS 4777.2 curves
+#       evaluated at PHASE-TO-GROUND voltage (what OpenDSS InvControl monitors), with the
+#       5 kVA limit (reactive priority) applied to P.
 #   Also prints OpenDSS load P/Q to confirm both tools use the same loads.
+#   OpenDSS side: Master.dss pu = 1.00; Loads.dss kw=1 kvar=0.539743 (original CSIRO);
+#   PVSystems.dss has `Edit InvControl.invall VarChangeTolerance=1e-6
+#   VoltageChangeTolerance=1e-7 ActivePChangeTolerance=1e-6`.
+#   Note: the loss-breakdown block prints before the OpenDSS losses line, although its last
+#   line says "compare with the OpenDSS losses above"; the OpenDSS figure is printed below it.
 #
-# OpenDSS side: Master.dss pu=1.00; Loads.dss kw=1 kvar=0.539743 (original CSIRO);
-# PVSystems.dss has `Edit InvControl.invall VarChangeTolerance=1e-6 VoltageChangeTolerance=1e-7 ActivePChangeTolerance=1e-6`
-#
-# RUN    julia> include("scripts/bmopf/validate_network_pinned.jl")
-# OUTPUT results/pf_validation_lv3_pinned.csv
+# Inputs:   data/networks/LV3_55bus_withPV/Master.dss (OpenDSS) and the same network via
+#           load_lv3.jl (BMOPFTools).
+# Outputs:  results/pf_validation_lv3_pinned.csv (bus, quantity, OpenDSS V, BMOPF V, diff);
+#           prints loads, inverter check, loss breakdown and voltage summary.
+# How to run (from the repo folder, in `julia +1.11 --project=bmopf`):
+#   include("scripts/bmopf/validate_network_pinned.jl")      (runs on include)
+# Used for: REPRODUCE.md step 2 (section 4 rows "BMOPFTools vs OpenDSS" and "Losses";
+#           section 6 item 5).
+# Credits:  CSIRO LV3 data (CC BY-NC-SA 4.0); BMOPFTools.jl by Frederik Geth; OpenDSS (EPRI)
+#           via OpenDSSDirect.jl; Ipopt.
+# =============================================================================
 
 using BMOPFTools, JuMP, Ipopt, OpenDSSDirect, Printf
 
@@ -30,6 +43,8 @@ function run_pinned_validation()
     # ------------------------------------------------------------ OpenDSS solve
     master = abspath(joinpath(root, "data", "networks", "LV3_55bus_withPV", "Master.dss"))
     try
+        # load and solve twice: in this setup the first solve after clear+redirect left all
+        # voltages at zero (OpenDSSDirect warm-up)
         for _ in 1:2    # OpenDSSDirect warm-up bug: first solve leaves zeros
             OpenDSSDirect.Text.Command("clear")
             OpenDSSDirect.Text.Command("redirect \"$master\"")
@@ -102,7 +117,10 @@ function run_pinned_validation()
 
     quiet = optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0)
     pf = solve_pf(net; optimizer = quiet)
-        # ---- loss breakdown (diagnosis of the 7 % loss gap, 13 Oct 2026; field names checked in BMOPFTools b7aa9a1)
+    # ---- loss breakdown (explains the 7 % loss gap, REPRODUCE.md section 6 item 5; field names
+    #      checked in BMOPFTools b7aa9a1; uses the internal helper _pattern_keys_to_matrix).
+    #      Switch loss assumes 1 mOhm per conductor (OpenDSS switch=y). Runs before the PF
+    #      status check below, so if the PF failed these numbers are not meaningful.
     let
         svc = "ugsc_16cu_xlpe/nyl/pvc_ug_4w_bundled"
         vbus(b, t) = (tb = get(get(pf["bus"], b, Dict()), t, nothing);

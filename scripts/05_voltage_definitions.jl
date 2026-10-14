@@ -1,11 +1,22 @@
-# ============================================================
-# 05_voltage_definitions.jl
-# Solves LV3_55bus_withPV and reports bus voltages TWO ways:
-#   phase-to-ground  = |V_phase|
-#   phase-to-neutral = |V_phase - V_neutral|
-# On a four-wire model these differ, because the neutral
-# conductor carries current and is not at earth potential.
-# ============================================================
+# =============================================================================
+# 05_voltage_definitions.jl: LV3 voltages phase-to-ground vs phase-to-neutral
+#
+# What it does (plain English): solves LV3_55bus_withPV in OpenDSS (with the
+#   warm-up solve) and reports the LV bus voltages TWO ways:
+#     phase-to-ground  = |V_phase|
+#     phase-to-neutral = |V_phase - V_neutral|  (phasor subtraction)
+#   On a four-wire model these differ, because the neutral conductor carries
+#   current and is not at earth potential. Phase-to-neutral is the quantity
+#   used for the thesis results. Also prints the neutral voltage range.
+# Inputs:   data/networks/LV3_55bus_withPV/Master.dss
+# Outputs:  printed only, no files written
+# How to run (from the repo folder, in `julia +1.9 --project=.`; this is the
+#   older top-level project, Julia 1.9.4 Manifest, not bmopf/):
+#   include("scripts/05_voltage_definitions.jl")
+# Used for: early exploration, not used for thesis results
+#   (the thesis scripts in scripts/bmopf/ use the same phase-to-neutral definition)
+# Credits:  CSIRO LV3 network data (LV3_55bus_withPV); OpenDSS (EPRI) via OpenDSSDirect.jl
+# =============================================================================
 
 using OpenDSSDirect, DataFrames, Statistics
 

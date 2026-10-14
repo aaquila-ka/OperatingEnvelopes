@@ -1,7 +1,9 @@
 # How to reproduce the thesis results
 
 Thesis: Learning dynamic operating envelopes from imperfect data (UQ REIT7841, Aaquila Konnimera Akbar)
-Last updated 14 Oct 2026 (dropout-secure DOEs added, git commits e5ea399 to 73764a5). Main results produced at git commit ae2dc4f; later results added afterwards (see git log).
+Main results were produced at git commit ae2dc4f; later results were added afterwards (see the git log for the exact version of every file).
+
+New here? Start with README.md for a plain-English overview.
 
 ## 1. Software (locked)
 
@@ -12,13 +14,13 @@ Last updated 14 Oct 2026 (dropout-secure DOEs added, git commits e5ea399 to 7376
 | PowerOptLab.jl | commit 953e45c (github.com/frederikgeth/PowerOptLab.jl) |
 | JuMP / Ipopt | 1.32.1 / 1.16.0 |
 | OpenDSSDirect.jl | 0.9.9 |
-| Preferences.jl | pinned at 1.5.2 (1.6 clashes with BMOPFTools at b7aa9a1) |
+| Preferences.jl | pinned at 1.5.2 (1.6 is incompatible with BMOPFTools at b7aa9a1) |
 
 All thesis scripts use the project in the `bmopf/` folder. Its `Manifest.toml` locks every version above.
-The top-level `Project.toml` is the older August 2026 PowerModelsDistribution setup and is NOT used for these results.
+The top-level `Project.toml` is the older PowerModelsDistribution setup (used only by the early study scripts) and is NOT used for these results.
 Random draws use Julia's MersenneTwister; streams can change between Julia versions, so the scatter factors, changed segments and profile map are also written to the CSVs.
 
-First-time setup, from C:\thesis\OperatingEnvelopes in PowerShell:
+First-time setup, from the repository folder (on the author's laptop C:\thesis\OperatingEnvelopes) in a terminal:
 
     julia +1.11 --project=bmopf -e "using Pkg; Pkg.instantiate()"
 
@@ -34,16 +36,16 @@ First-time setup, from C:\thesis\OperatingEnvelopes in PowerShell:
 `scripts/bmopf/load_lv3.jl` also fixes the inverter settings after import (see the comments at the top of that file).
 
 House usage for the day runs: `data/profiles/TeamNando_OE1_LoadShapes.txt` (Team-Nando OE1-Ideal, commit 96abbab, BSD-3; licence in the same folder; SHA1 FE3A06F54025E1B4268F523AC1DB1E7870BCF33C).
-These 99 profiles are AusNet households from Team-Nando's 342-household x 365-day pool (`Res_load_data_30min_res.npy`, in OEs-The-Basics and MV-LV-Networks), all on day index 350 = Wednesday 17 Dec 2014: the lowest-demand day of that year (mean 9.71 kWh per house vs 12.06 kWh on the median day). Checked 14 Oct 2026: the 5-min OE1 shapes averaged to 30 min equal the pool values to 1e-15 kW for all 99. The OE1 PV shape is not from the pool's PV file; its daily energy is above about 76 % of the pool's PV days.
+These 99 profiles are AusNet households from Team-Nando's 342-household x 365-day pool ("Residential load data 30-min resolution.npy", in OEs-The-Basics and MV-LV-Networks; not included here, see data/profiles/pool/README_pool.md), all on day index 350: the lowest-demand day in the dataset (mean 9.71 kWh per house vs 12.06 kWh on the median day). Checked: the 5-min OE1 shapes averaged to 30 min equal the pool values to 1e-15 kW for all 99. The OE1 PV shape is not from the pool's PV file; its daily energy is above about 76 % of the pool's PV days.
 
 ## 3. Run order
 
-Start Julia from C:\thesis\OperatingEnvelopes with `julia +1.11 --project=bmopf`. For steps 7-30, first run `using Logging; disable_logging(Logging.Warn)` to hide the repeated import warnings, and use a fresh Julia session for each script.
+Start Julia from the repository folder with `julia +1.11 --project=bmopf`. For steps 7-34, first run `using Logging; disable_logging(Logging.Warn)` to hide the repeated import warnings, and use a fresh Julia session for each script.
 
 | # | Command | What it does | Output |
 |---|---|---|---|
 | 1 | `include("scripts/bmopf/load_lv3.jl")` | imports and checks the feeder | results/analyze_lv3_after_ctrlfix.txt |
-| 2 | `include("scripts/bmopf/validate_network_pinned.jl")` | BMOPFTools vs OpenDSS with the same pinned PV outputs | results/pf_validation_lv3*.csv |
+| 2 | `include("scripts/bmopf/validate_network_pinned.jl")` | BMOPFTools vs OpenDSS with the same pinned PV outputs | results/pf_validation_lv3_pinned.csv |
 | 3 | `include("scripts/bmopf/doe_clean_snapshot.jl")` | correct DOEs at 1.00 and 1.03 pu | results/doe_clean_snapshot.csv |
 | 4 | `include("scripts/bmopf/doe_dirty_snapshot.jl")` | Case A and Case B (bound-point reading) | results/doe_dirty_snapshot.csv |
 | 5 | `include("scripts/bmopf/doe_severity_sweep.jl")` | resistance x k, k = 1 to 3.07 (bound-point reading) | results/doe_severity_sweep.csv |
@@ -72,6 +74,10 @@ Start Julia from C:\thesis\OperatingEnvelopes with `julia +1.11 --project=bmopf`
 | 28 | `include("scripts/bmopf/doe_dropout_records_lv3.jl")` then `run_dropout_records_lv3()` | headline redone: records-based dropout-secure DOE on the true network (needs 26, ~6 min) | results/doe_dropout_records_lv3.csv |
 | 29 | `include("scripts/bmopf/lv9/lv9_dropout.jl")` then `run_lv9_dropout_check()` and `run_lv9_dropout_secure()` | LV9: phase-secure DOE vs 130 cases (nobody, 6 phase patterns, 123 single dropouts); verify-vs-realised diagnostic; dropout-secure DOE (needs 24, ~15 min) | results/lv9/lv9_dropout_check.csv, lv9_dropout_diagnostic.csv, lv9_dropout_secure.csv |
 | 30 | `include("scripts/bmopf/lv9/lv9_dropout_records.jl")` then `run_lv9_dropout_records()` | LV9 headline redone with the dropout-secure DOE (shared cables / l_2373 wrong; needs 29, ~25 min) | results/lv9/lv9_dropout_records.csv |
+| 31 | `include("scripts/bmopf/lv9/lv9_midpoint.jl")` then `run_lv9_midpoint()` | LV9 dropout-secure DOE and headline at 0.97 pu (needs 29) | results/lv9/lv9_midpoint_0.97.csv |
+| 32 | `include("scripts/bmopf/doe_partial_util_lv3.jl")` then `run_partial_util_lv3()` | dropout-secure DOE vs 300 random part-export mixes, snapshot and 12:00 (~2 min) | results/doe_partial_util_lv3.csv |
+| 33 | `include("scripts/bmopf/lv9/lv9_verify_diag.jl")` then `run_lv9_verify_diag()` | LV9 verify vs realised, customer by customer (known issue 20) | results/lv9/lv9_verify_diag.csv |
+| 34 | `include("scripts/bmopf/validate_pf_vs_opendss.jl")` | unpinned BMOPF power flow vs OpenDSS; not a like-for-like test, see known issue 25 | results/pf_validation_lv3.csv |
 
 The ~46 "from_dss: ... could not be represented" warnings at import are expected (OpenDSS fields like `units` that BMOPF does not need).
 
@@ -84,7 +90,7 @@ The ~46 "from_dss: ... could not be represented" warnings at import are expected
 | Clean DOE, 1 kW snapshot | 4.906 kW at 1.00 pu, 4.529 kW at 1.03 pu (both inverter-limited) |
 | Case A, 1 kW snapshot, 1.03 pu | correct 2.734 kW, issued 4.529 kW, gap 1.795 kW (+65.6 %); realised 254.60 V with Volt-Watt (bound-point 255.12 V) |
 | Critical cables | 12 of 22 segments matter; l_3432 alone = same DOE as all 22 wrong, realised 254.60 V, 1 customer above 253 V |
-| Record errors, 1 kW snapshot | scatter 5-10 %: ≤+0.3 %; 2 wrong cables: 0 to +49.7 %; 5 or 11 wrong: up to +65.7 %, ≤254.60 V |
+| Record errors, 1 kW snapshot | scatter 5-10 %: ≤+0.3 %; 2 wrong cables: 0 to +49.65 %; 5 or 11 wrong: up to +65.7 %, ≤254.60 V |
 | Record errors, 12:00 loads | scatter 10 %: -5.7 to +9.3 %, ≤253.20 V; 5 or 11 wrong: up to +117 %, ≤255.15 V |
 | Full day, 1.03 pu | clean DOE 4.02-4.48 kW, voltage-limited at all 48 steps; gap 2.0-2.35 kW; sun-limited over-voltage 10:00-16:30, peak 255.02 V at 11:30 |
 | Source sweep, 12:00 | gap 0.14 / 0.17 / 0.71 / 1.63 / 2.29 / 0.60 kW at 1.00 / 1.01 / 1.02 / 1.025 / 1.03 / 1.035 pu |
@@ -101,6 +107,7 @@ The ~46 "from_dss: ... could not be represented" warnings at import are expected
 | LV3 headline, dropout-secure | snapshot: issued 4.203, correct 2.715 kW, gap 1.488 kW (+54.8 %), 254.62 V; 12:00: 3.664 vs 1.947 kW, gap 1.718 kW (+88.2 %), 255.05 V; all 22 wrong: 85 of 85 cases over 253 V; l_3432 only: 70 of 85, same correct DOE |
 | LV9 dropout check / dropout-secure | phase-secure DOE: all 123 single dropouts pass; "only b and c export" 253.20 V (0.94 pu) / 253.13 V (1.00 pu) although verify said feasible; dropout-secure 2.423 kW (0.94 pu, -0.9 %) / 1.097 kW (1.00 pu, -1.3 %), about -33 % vs bound point |
 | LV9 headline, dropout-secure | 0.94 pu: 12 shared wrong correct 1.552 kW, gap 0.871 kW (+56.1 %), 258.93 V, 127 of 130 cases; l_2373 only 1.602 kW, gap 0.821 (+51.3 %), 258.42 V; 1.00 pu: 12 shared gap 0.123 kW (+12.7 %), 254.13 V, 2 of 130; l_2373 only: no gap |
+| Part-export check, LV3 dropout-secure | 300 random mixes each: 0 over 253 V; worst 252.92 V (snapshot), 252.82 V (12:00) |
 | Sharing rules, l_3432 wrong | equal: 12 of 12 limits change, 21.55 kW (snapshot); proportional: 1 of 12, 1.85 kW; realised 254.60 V at b828 b-n under every rule |
 
 ## 5. Main modelling choices
@@ -111,7 +118,7 @@ The ~46 "from_dss: ... could not be represented" warnings at import are expected
 - Inverters: 5 kVA, Volt-VAr and Volt-Watt on phase-to-neutral voltage, reactive priority.
 - Source voltage: 1.03 pu for the main results (also used in Geth's PowerOptLab LV3 study, there with 1 % source unbalance); 1.00-1.035 pu in the source sweep.
 - Cable error: 22 service-cable segments; 16 mm² vs 4 mm² copper from the dataset's own line codes (resistance ratio 3.07).
-- Security of the DOE: bound-point (everyone exports at once), phase-secure (also safe when one or two whole phases export nothing, checked with verify_operating_envelope) and dropout-secure (realised reading <= 253.005 V for nobody dropped, the 7 phase patterns, and every 1- or 2-customer dropout on LV3 / every single dropout on LV9). The dropout-secure DOE is the safest version and is used for the headline results of 14 Oct 2026.
+- Security of the DOE: bound-point (everyone exports at once), phase-secure (also safe when one or two whole phases export nothing, checked with verify_operating_envelope) and dropout-secure (realised reading <= 253.005 V for nobody dropped, the 7 phase patterns, and every 1- or 2-customer dropout on LV3 / every single dropout on LV9). The dropout-secure DOE is the safest version and is used for the headline results.
 - Two readings of what an issued DOE does on the true street: bound-point (everyone exports exactly the DOE, Volt-Watt off; worst case) and realised (everyone may export up to the cap, all inverter laws on; physical). Day runs also cap export by the sun available.
 
 ## 6. Known issues and limitations
@@ -120,7 +127,7 @@ The ~46 "from_dss: ... could not be represented" warnings at import are expected
 2. Resistance ratio: the dataset's 16 mm² line code (1.49 Ω/km) is about 30 % above the IEC 60228 20 °C maximum (1.15 Ω/km), while its 4 mm² code (4.57 Ω/km) is close to IEC (4.61). The 3.07 ratio is therefore conservative; doe_ratio.jl shows that the IEC ratio 4.0 adds about 0.35 kW to the gap and 0.5-0.8 V to the realised peak.
 3. Equal allocation is the main rule; one critical customer sets everyone's DOE. Proportional and max-min are tested in doe_fairness.jl: they change who absorbs the error, not the physical over-voltage.
 4. One feeder, one day, one set of 12 profiles, 5 kVA inverters.
-5. Network losses: BMOPF p_loss (lines + transformer) is about 7 % below OpenDSS because the 8 closed switches are 1 mΩ elements in OpenDSS (switch=y) but ideal ties in BMOPFTools (28.2 W), and BMOPF's p_loss leaves out the earthing shunts (0.5 W). With both added, losses agree within 0.8 W (387.6 vs 386.9 W, 0.2 %); traced 13 Oct 2026 (loss breakdown printed by validate_network_pinned.jl). The switch impedance also explains most of the 0.10 V voltage difference. Negligible for DOEs.
+5. Network losses: BMOPF p_loss (lines + transformer) is about 7 % below OpenDSS because the 8 closed switches are 1 mΩ elements in OpenDSS (switch=y) but ideal ties in BMOPFTools (28.2 W), and BMOPF's p_loss leaves out the earthing shunts (0.5 W). With both added, losses agree within 0.8 W (387.6 vs 386.9 W, 0.2 %) (loss breakdown printed by validate_network_pinned.jl). The switch impedance also explains most of the 0.10 V voltage difference. Negligible for DOEs.
 6. Smoothing: BMOPF smooths the Volt-Watt corner at 253 V (softplus, about 0.5 V wide), which caps an inverter at about 4.8 kW at exactly 253 V. This overstates realised curtailment by about 5 % when many customers sit just above 253 V (all 22 wrong: 1.86 vs 1.78 kW with the exact curve); voltages are unaffected. Small trims in the inverter-limited snapshot come from the 5 kVA circle with reactive priority. curtail_kW mixes both causes.
 7. The severity sweep (file 3) scales only diagonal R; k = 3.07 gives 2.739 kW vs the full line-code swap 2.734 kW (0.2 %).
 8. Customer counts above 253 V include marginal cases (253.01 V); read them with the voltage.
@@ -136,12 +143,21 @@ The ~46 "from_dss: ... could not be represented" warnings at import are expected
 17. "LV9 1.00 pu ~ LV3 1.025 pu" means the same transformer no-load voltage only; LV9 is voltage-limited even at 0.92-0.94 pu.
 18. Current ratings are only applied to copper cables (16 mm2 110 A buried / 81 A duct, 120 mm2 345 A, Prysmian datasheet). Aluminium mains and the 4 mm2 cable have no rating yet, so the LV9 shared-cable thermal case is incomplete (negative gaps there are an artefact). AS/NZS 3008.1.1 to be consulted.
 19. All DOEs before step 25 except doe_phase_secure / lv9_phase_secure are bound-point DOEs (everyone exports at once); they are not automatically safe when one or two phases do not export (LV3 +0.3 V, LV9 +5.4 V). Steps 25-30 give the dropout-secure versions.
-20. The phase-secure check (verify_operating_envelope with the 7 phase patterns) and the realised reading disagree slightly: patterns the check accepts give up to 0.01 V (LV3) and 0.20 V (LV9, "only b and c export") above 253 V in the realised reading. Likely cause (not yet confirmed): the Volt-VAr/Volt-Watt laws are smoothed (about 0.002 pu), which gives the optimiser a little freedom when the limit is imposed. The dropout-secure DOE uses the realised reading, so it is not affected. To ask F. Geth.
+20. The phase-secure check (verify_operating_envelope with the 7 phase patterns) and the realised reading disagree slightly: patterns the check accepts give up to 0.01 V (LV3) and 0.20 V (LV9, "only b and c export") above 253 V in the realised reading. The LV9 diagnostic (lv9_verify_diag.jl, results/lv9/lv9_verify_diag.csv) shows the check's own solution curtails one inverter (ld2984) to 2347 W where the realised reading gives 2445 W (253.00 vs 253.21 V). Suspected cause, not yet confirmed: solver tolerance at the 1 MW power base (about 1e-4 pu, i.e. about 100 W); a rerun with a tighter tolerance is planned. (An earlier guess, smoothing of the inverter laws, did not explain it.) The dropout-secure DOE uses the realised reading, so it is not affected. To ask F. Geth.
 21. Near the limit the DOE is very sensitive to the voltage tolerance: on LV3 at 12:00, removing violations of under 0.1 V costs 4.6 % of export (3.841 -> 3.664 kW). The tolerance used is 253.005 V.
 22. On LV3, checking the 85 cases found the same worst case as checking all 4094 on/off combinations, so dropping 3 or more customers never made things worse there. On LV9, pairs (7503 cases) were not checked; single dropouts never bind, the binding case is always one whole phase silent.
 23. The harm from a wrong record is not monotone in source voltage (also item 13): on LV9 the dropout-secure gap is 0.82-0.87 kW at 0.94 pu but 0-0.12 kW at 1.00 pu, where every customer is already limited to about 1.1 kW and the shared cable carries little current.
 24. Current ratings found since item 18 (not yet used in any run): 4 mm2 Cu 33 A buried / 33 A duct and 16 mm2 110 / 81 A (MEC XV datasheet, AS/NZS 3008.1.1 basis); AusNet library in Team-Nando MV-LV-Networks: 16 mm2 Cu 107 / 91 A, 240 mm2 Al 280 / 325 A (meaning of the two columns undocumented, probably summer / winter).
+25. Unpinned comparison (validate_pf_vs_opendss.jl, step 34) is not a like-for-like test. The BMOPFTools power flow (solve_pf) treats Volt-Watt as a cap, so it does not fix each inverter's P, and it returns Q = 0 (Stage 3 of the development notes). Rerun on the current model (1.00 pu): for example ld1970 gets 1.124 kW, 0 kvar in BMOPF but 4.924 kW, -0.869 kvar in OpenDSS, so the voltages differ by up to 2.07 V (b828 b-n), neutral up to 0.91 V. This shows the inverter outputs differ, not the network model. The network model is validated with the same P and Q in both programs (step 2: largest difference 0.104 V); the inverter curves are checked separately (OpenDSS InvControl gives the AS/NZS 4777.2 values exactly); and the OPF-based realised reading, which does apply the inverter laws, matched an exact OpenDSS solve within 0.03 V (DATA_CARD.md, "How much to trust it").
+26. The 4094 on/off check (step 27) covers every combination of the 12 customers exporting or not, at one operating point (12:00 loads, 1.03 pu, the dropout-secure DOE). It is not a check over all days or voltages.
+27. curtail_kW is about 0.001 kW low for each customer given a limit of 0, because the solver needs a cap above zero and those customers get 1 W (doe_fairness.jl / lv9_common.jl realised()). Seen in doe_partial_lv3.csv and lv9_partial.csv (e.g. -0.082 kW with 82 silent customers). Voltages and DOEs are not affected.
+28. Bisection limits: the correct DOE in the records runs is searched between 0 and the issued DOE, so a gap can never come out negative ("no gap" means gap <= 0). The search step is about issued/1024 (LV9) or 1/4096 of the range (LV3), always rounding to the safe side, so gaps carry about 0.002 kW of grid precision.
+29. LV9 thermal case (lv9_thermal.jl): in the 81 A "in duct" run the 120 mm2 cable keeps its 345 A buried rating, so buried and duct assumptions are mixed there.
+30. scripts/bmopf/doe_dirty_origloads.jl and its CSV are from an earlier version: the script calls a helper that has since been renamed, so it no longer runs, and the loads it compares are now the default. It is kept for history only and is not part of the run order.
+31. The scripts in scripts/ (01-05, count_linecodes.jl, sensitivity_service_cable.jl) and scripts/study/ are early exploration on the older top-level PowerModelsDistribution project (Julia 1.9). Their outputs (e.g. results/sensitivity_service_cable.csv) come from earlier model states and are not thesis results.
+32. Voltage lower limit: the model uses 207 V (DATA_CARD.md cites AS 61000.3.100); AS 60038's 230 V -6 % would be 216.2 V. The source for 207 V is still to be confirmed. All results in this thesis are about the 253 V upper limit.
 
 ## 7. Where the history is
 
-`scripts/notes/worklog.md` has a dated log of every check, error and fix.
+`scripts/notes/worklog.md` has a step-by-step log of every check, error and fix (stages, in order). The git log has the exact version of every file.
+

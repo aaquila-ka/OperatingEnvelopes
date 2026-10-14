@@ -1,27 +1,36 @@
-# scripts/bmopf/doe_robust.jl
+# =============================================================================
+# doe_robust.jl: what can a utility do about wrong cable records? (hedge vs check records)
 #
-# STEP 4: what can a utility DO about wrong cable records?
-# Part A, "hedge in advance" (CSIRO-style robust DOE): assume every service cable's resistance
-#   may be up to b higher than recorded (b = 5, 10, 20 %) and issue the DOE that is safe for the
-#   worst case. Cost = export given up compared with the clean DOE.
-#   Check: the same robust DOE solved with PowerOptLab's scenario feature
-#   (one envelope valid for R x (1-b), R x 1, R x (1+b), and a MIXED case where the critical
-#   customer's cable l_3432 is +b and all others -b) should equal the uniform worst case R x (1+b).
-#   v2: mixed scenario added; Part B adds an OPF-ranked order (from doe_critical_cables.csv).
-#   Note (second review): the DOE is very slightly non-monotone in single-cable resistance
-#   (Volt-VAr coupling), so 'thinnest everywhere' is the worst case only to within ~0.02 kW.
-# Part B, "check the records first": the 12 customer service cables are verified one by one,
-#   longest first (a ranking a utility can make from its GIS without any OPF) or shortest first
-#   (contrast). Unverified customer cables are assumed to be the thinnest type (4 mm2), verified
-#   ones are known to be 16 mm2. The DOE is safe by construction; we report how much export is
-#   recovered after k checks.
-# Settings: CSIRO 1 kW snapshot and the 12:00 loads of the real day; source 1.03 pu.
+# What it does (plain English):
+#   Part A, "hedge in advance" (CSIRO-style robust DOE): assume every service cable's
+#     resistance may be up to b higher than recorded (b = 5, 10, 20 %) and issue the DOE that is
+#     safe for that worst case. Cost = export given up compared with the clean DOE.
+#     Cross-check: the same robust DOE solved with PowerOptLab's scenario feature (one envelope
+#     valid for R x (1-b), R x 1, R x (1+b), and a MIXED case where the critical customer's cable
+#     l_3432 is +b and all others -b) should equal the uniform worst case R x (1+b).
+#   Part B, "check the records first": the 12 customer service cables are checked one by one in
+#     three orders: longest first (a ranking a utility can make from its GIS without any OPF),
+#     OPF-ranked (harm ranking from results/doe_critical_cables.csv) and shortest first
+#     (contrast). Unchecked customer cables are assumed to be the thinnest type (4 mm2), checked
+#     ones are known to be 16 mm2. We report how much export is recovered after k checks.
+#   Note: the DOE is very slightly non-monotone in single-cable resistance (Volt-VAr coupling),
+#     so "thinnest everywhere" is the worst case only to within about 0.02 kW; "safe" in Part B
+#     is meant in that sense (e.g. k = 11 at 12:00 gives 4.252599 vs clean 4.252542 kW).
+#   Settings: CSIRO 1 kW snapshot and the 12:00 loads of the profile day; source 1.03 pu.
 #
-# RUN (fresh Julia, from C:\thesis\OperatingEnvelopes, julia +1.11 --project=bmopf)
-#   julia> using Logging; disable_logging(Logging.Warn)
-#   julia> include("scripts/bmopf/doe_robust.jl")
-#   julia> run_robust()
-# OUTPUT results/doe_robust.csv
+# Inputs:   LV3 network (data/networks/LV3_55bus_withPV/ via load_lv3.jl), house profiles
+#           data/profiles/TeamNando_OE1_LoadShapes.txt. Includes doe_timeseries.jl (which
+#           includes doe_record_errors.jl -> doe_common.jl -> load_lv3.jl).
+# Outputs:  results/doe_robust.csv (84 rows); prints a table per setting.
+#           Column "status": Part A rows hold the scenario-check solve status, Part B rows the
+#           status of that row's DOE solve.
+# How to run (from the repo folder, in `julia +1.11 --project=bmopf`):
+#   using Logging; disable_logging(Logging.Warn)
+#   include("scripts/bmopf/doe_robust.jl")   then   run_robust()
+# Used for: REPRODUCE.md step 12 (section 4 row "Robust, 12:00"); DATA_CARD.md file 10.
+# Credits:  CSIRO LV3 data (CC BY-NC-SA 4.0); BMOPFTools.jl and PowerOptLab.jl by Frederik
+#           Geth; Ipopt; Team-Nando OE1-Ideal profiles (BSD-3, AusNet smart-meter data).
+# =============================================================================
 
 include(joinpath(pwd(), "scripts", "bmopf", "doe_timeseries.jl"))
 

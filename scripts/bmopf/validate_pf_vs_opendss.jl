@@ -1,18 +1,28 @@
-# scripts/bmopf/validate_pf_vs_opendss.jl
+# =============================================================================
+# validate_pf_vs_opendss.jl: BMOPFTools power flow vs OpenDSS on LV3, each tool with its own
+#                            inverter controls (not pinned)
 #
-# PURPOSE (Aim 1, part 2)
-#   Check that the BMOPFTools power flow and OpenDSS give the same voltages on
-#   the corrected LV3 network. Compared quantity: PHASE-TO-NEUTRAL magnitude
-#   at every LV bus/phase, plus neutral-to-ground magnitude.
-#   Only magnitudes are compared, because the two tools may use different
-#   angle references across the Dyn transformer.
+# What it does (plain English): (thesis Aim 1, part 2)
+#   Checks that the BMOPFTools power flow and OpenDSS give the same voltages on the corrected
+#   LV3 network. Compared quantity: PHASE-TO-NEUTRAL magnitude at every LV bus/phase, plus
+#   neutral-to-ground magnitude. Only magnitudes are compared, because the two tools may use
+#   different angle references across the Dyn transformer. Here each tool runs its own
+#   inverter settings, but the BMOPFTools power flow does not fix inverter P (Volt-Watt is a
+#   cap) and returns Q = 0, so the inverter outputs differ between the tools and so do the
+#   voltages (up to 2.07 V on the current model). This is NOT a network-model validation;
+#   use validate_network_pinned.jl for that (0.104 V). Also prints the OpenDSS PV outputs.
 #
-# HOW TO RUN (from C:\thesis\OperatingEnvelopes)
-#   julia +1.11 --project=bmopf
-#   julia> include("scripts/bmopf/validate_pf_vs_opendss.jl")
-#
-# OUTPUT
-#   results/pf_validation_lv3.csv  (one row per bus/phase)
+# Inputs:   data/networks/LV3_55bus_withPV/Master.dss (OpenDSS); includes load_lv3.jl, which
+#           builds the corrected `net` (BMOPFTools).
+# Outputs:  results/pf_validation_lv3.csv (one row per bus/phase); prints a summary.
+# How to run (from the repo folder, in `julia +1.11 --project=bmopf`):
+#   include("scripts/bmopf/validate_pf_vs_opendss.jl")       (runs on include)
+# Used for: REPRODUCE.md step 34 and known issue 25 (why the unpinned test is not
+#           like-for-like); the validation numbers quoted come from
+#           validate_network_pinned.jl (step 2).
+# Credits:  CSIRO LV3 data (CC BY-NC-SA 4.0); BMOPFTools.jl by Frederik Geth; OpenDSS (EPRI)
+#           via OpenDSSDirect.jl; Ipopt.
+# =============================================================================
 
 using BMOPFTools, JuMP, Ipopt, OpenDSSDirect, Printf
 
@@ -28,7 +38,7 @@ vbm(bus, t) = complex(pf["bus"][bus][t]["vr"], pf["bus"][bus][t]["vi"])
 # ---------------------------------------------------------------- 2. OpenDSS
 master = abspath(joinpath(ROOT, "data", "networks", "LV3_55bus_withPV", "Master.dss"))
 try
-    # Known OpenDSSDirect bug: the first solve after clear+redirect reports
+    # Observed in this setup: the first solve after clear+redirect reports
     # converged but leaves every voltage at zero. So load and solve twice.
     for _ in 1:2
         OpenDSSDirect.Text.Command("clear")

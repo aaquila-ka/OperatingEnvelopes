@@ -1,14 +1,25 @@
-# scripts/bmopf/lv9/lv9_phase_secure.jl
+# =============================================================================
+# lv9_phase_secure.jl: phase-secure equal DOE on LV9
 #
-# Phase-imbalance-secure equal DOE on LV9 (same method as scripts/bmopf/doe_phase_secure.jl):
-# highest equal limit that is safe for all 7 phase export patterns. Voltage limits only
-# (no thermal limits), to compare with the bound-point DOE of lv9_core.jl.
-#
-# RUN (fresh Julia, from C:\thesis\OperatingEnvelopes, julia +1.11 --project=bmopf)
-#   julia> using Logging; disable_logging(Logging.Warn)
-#   julia> include("scripts/bmopf/lv9/lv9_phase_secure.jl")
-#   julia> run_phase_secure_lv9()          # 0.94 and 1.00 pu (~15-20 min)
-# OUTPUT results/lv9/lv9_phase_secure.csv
+# What it does (plain English): finds the highest equal export limit that stays within the
+#   voltage limits for all 7 phase export patterns (everyone, or only some whole phases
+#   exporting), by bisection between 0 and the bound-point DOE, using PowerOptLab's
+#   verify_operating_envelope (same method as scripts/bmopf/doe_phase_secure.jl). Voltage
+#   limits only (no thermal limits), to compare with the bound-point DOE of lv9_core.jl.
+# Inputs:   data/networks/LV9_258bus_withPV/; includes lv9_common.jl and
+#           scripts/bmopf/phase_secure_core.jl (ps_doe).
+# Outputs:  results/lv9/lv9_phase_secure.csv; one line printed per source voltage.
+# How to run (from the repo folder, in `julia +1.11 --project=bmopf`):
+#   using Logging; disable_logging(Logging.Warn)
+#   include("scripts/bmopf/lv9/lv9_phase_secure.jl")   then
+#   run_phase_secure_lv9()          # 0.94 and 1.00 pu (REPRODUCE.md says ~6 min)
+# Used for: REPRODUCE.md step 24 (section 4 row "LV9 thermal / phase-secure": 2.445 kW at
+#           0.94 pu); its csv is read by lv9_dropout.jl (step 29).
+# Credits:  CSIRO LV9 feeder data ("Realistic Australian MV feeder with associated LV
+#           feeders" v1, doi 10.25919/ghnz-bk28, CC BY-NC-SA 4.0; copy shipped with
+#           BMOPFTools b7aa9a1, test/data/LV/LV9_258bus); BMOPFTools.jl (b7aa9a1) and
+#           PowerOptLab.jl (953e45c) by Frederik Geth; JuMP and Ipopt
+# =============================================================================
 
 include(joinpath(pwd(), "scripts", "bmopf", "lv9", "lv9_common.jl"))
 include(joinpath(pwd(), "scripts", "bmopf", "phase_secure_core.jl"))

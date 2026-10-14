@@ -1,20 +1,30 @@
-# scripts/bmopf/lv9/lv9_thermal.jl
+# =============================================================================
+# lv9_thermal.jl: LV9 DOEs with cable current (thermal) limits added
 #
-# STEP: add cable current (thermal) limits to LV9 and redo the core comparison.
-# Ratings (4-core Cu XLPE 0.6/1 kV, 90 C conductor, Prysmian 4C-XLPE circular datasheet,
-# 25 C ground, 1.2 K.m/W, 0.5 m): 16 mm2 = 110 A buried direct / 81 A in duct;
-# 120 mm2 = 345 A buried / 275 A in duct. Applied per conductor (phases and neutral).
-# Aluminium mains (240 mm2, 400 mm2 triplex) and the "generic/lv" code have no limit here
-# (rating not sourced yet). The 4 mm2 cable used as the "true" wrong cable gets no limit
-# either (not in the datasheet), so the correct DOE on a 4 mm2 street is slightly optimistic.
-# Realised readings remove ALL limits (voltage and current): real cables do not curtail;
-# instead we report the highest current in the shared 16 mm2 cables at the issued DOE.
-#
-# RUN (fresh Julia, from C:\thesis\OperatingEnvelopes, julia +1.11 --project=bmopf)
-#   julia> using Logging; disable_logging(Logging.Warn)
-#   julia> include("scripts/bmopf/lv9/lv9_thermal.jl")
-#   julia> run_lv9_thermal()            # 0.94 and 1.00 pu, 110 A and 81 A   (~10 min)
-# OUTPUT results/lv9/lv9_thermal.csv
+# What it does (plain English): adds current limits to the copper cables and redoes the core
+#   comparison (records say 16 mm2; truth = drops or the 12 shared segments really 4 mm2).
+#   Ratings (4-core Cu XLPE 0.6/1 kV, 90 C conductor, Prysmian 4C-XLPE circular datasheet,
+#   25 C ground, 1.2 K.m/W, 0.5 m): 16 mm2 = 110 A buried direct / 81 A in duct;
+#   120 mm2 = 345 A buried / 275 A in duct (the script keeps 345 A for 120 mm2 in both the
+#   110 A and the 81 A run). Applied per conductor (phases and neutral). Aluminium mains
+#   (240 mm2, 400 mm2 triplex), the "generic/lv" code and the 4 mm2 "true" cable get no limit
+#   (rating not sourced yet), so the correct DOE on a 4 mm2 street is optimistic and the
+#   shared-cable case is incomplete (negative gaps there are an artefact, known issue 18).
+#   Realised readings remove ALL limits (voltage and current): real cables do not curtail;
+#   instead the highest current in the shared 16 mm2 cables at the issued DOE is reported.
+# Inputs:   data/networks/LV9_258bus_withPV/; includes lv9_core.jl (and so lv9_common.jl).
+# Outputs:  results/lv9/lv9_thermal.csv; table printed.
+# How to run (from the repo folder, in `julia +1.11 --project=bmopf`):
+#   using Logging; disable_logging(Logging.Warn)
+#   include("scripts/bmopf/lv9/lv9_thermal.jl")   then
+#   run_lv9_thermal()            # 0.94 and 1.00 pu, 110 A and 81 A   (~10 min)
+# Used for: REPRODUCE.md step 23 (section 4 row "LV9 thermal (110 A)"; known issues 18, 24).
+# Credits:  CSIRO LV9 feeder data ("Realistic Australian MV feeder with associated LV
+#           feeders" v1, doi 10.25919/ghnz-bk28, CC BY-NC-SA 4.0; copy shipped with
+#           BMOPFTools b7aa9a1, test/data/LV/LV9_258bus); BMOPFTools.jl (b7aa9a1) and
+#           PowerOptLab.jl (953e45c) by Frederik Geth; JuMP and Ipopt;
+#           cable ratings from the Prysmian 4C-XLPE datasheet
+# =============================================================================
 
 include(joinpath(pwd(), "scripts", "bmopf", "lv9", "lv9_core.jl"))
 

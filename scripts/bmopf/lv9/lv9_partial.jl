@@ -1,16 +1,27 @@
-# scripts/bmopf/lv9/lv9_partial.jl
+# =============================================================================
+# lv9_partial.jl: LV9 partial export (phase patterns) and cable currents at the clean DOE
 #
-# Same two checks as scripts/bmopf/doe_partial_lv3.jl, on LV9:
-# (1) PARTIAL EXPORT: clean equal DOE applied on the correct network for the 7 phase patterns
-#     (each subset of phases exporting); realised voltages with Volt-VAr, Volt-Watt, 5 kVA kept.
-# (2) CABLE CURRENTS at the clean DOE (bound point), by segment kind (drops / shared 16 mm2 /
-#     other line codes), to compare with cable ratings (no current limits are modelled).
-#
-# RUN (fresh Julia, from C:\thesis\OperatingEnvelopes, julia +1.11 --project=bmopf)
-#   julia> using Logging; disable_logging(Logging.Warn)
-#   julia> include("scripts/bmopf/lv9/lv9_partial.jl")
-#   julia> run_lv9_partial()                 # 0.94 and 1.00 pu
-# OUTPUT results/lv9/lv9_partial.csv, results/lv9/lv9_cable_currents.csv
+# What it does (plain English): two checks, same as scripts/bmopf/doe_partial_lv3.jl:
+#   (1) PARTIAL EXPORT: the clean equal (bound-point) DOE is applied on the correct network
+#       for the 7 phase patterns (each subset of phases exporting, the others silent);
+#       realised voltages with Volt-VAr, Volt-Watt and 5 kVA kept.
+#   (2) CABLE CURRENTS at the clean DOE (bound point), highest per segment kind (drops /
+#       shared 16 mm2 / stubs) or per other line code, to compare with cable ratings
+#       (no current limits are modelled here; see lv9_thermal.jl).
+# Inputs:   data/networks/LV9_258bus_withPV/; includes lv9_core.jl (and so lv9_common.jl).
+# Outputs:  results/lv9/lv9_partial.csv, results/lv9/lv9_cable_currents.csv; tables printed.
+#           Note: curtail_kW in lv9_partial.csv is about 0.001 kW too low per silent customer
+#           (silent customers get a 1 W cap in realised(), see lv9_common.jl), which is why
+#           some rows show -0.041 / -0.082.
+# How to run (from the repo folder, in `julia +1.11 --project=bmopf`):
+#   using Logging; disable_logging(Logging.Warn)
+#   include("scripts/bmopf/lv9/lv9_partial.jl")   then   run_lv9_partial()   # 0.94 and 1.00 pu
+# Used for: REPRODUCE.md step 22 (DATA_CARD rows lv9_partial.csv, lv9_cable_currents.csv).
+# Credits:  CSIRO LV9 feeder data ("Realistic Australian MV feeder with associated LV
+#           feeders" v1, doi 10.25919/ghnz-bk28, CC BY-NC-SA 4.0; copy shipped with
+#           BMOPFTools b7aa9a1, test/data/LV/LV9_258bus); BMOPFTools.jl (b7aa9a1) and
+#           PowerOptLab.jl (953e45c) by Frederik Geth; JuMP and Ipopt
+# =============================================================================
 
 include(joinpath(pwd(), "scripts", "bmopf", "lv9", "lv9_core.jl"))
 

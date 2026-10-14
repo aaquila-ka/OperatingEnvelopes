@@ -1,15 +1,28 @@
-# scripts/bmopf/doe_severity_sweep.jl
+# =============================================================================
+# doe_severity_sweep.jl: how big must the cable error be? Resistance x k, k = 1 to 3.07
 #
-# Severity sweep ("dirty, then dirtier"): service-cable resistance error factor k.
-# The TRUE street has service-cable conductor resistance x k (diagonal R only; the
-# off-diagonal 0.0493 ohm/km Carson earth-return term is unchanged, as in Sept).
-# Records always say k = 1 (Case A) or the reverse (Case B).
-#   DOE(k)        = correct equal export limit on a street with error k
-#   Case A (k>1)  : records k=1, truth k  -> issued DOE(1), correct DOE(k): over-promise
-#   Case B (k>1)  : records k, truth k=1  -> issued DOE(k), correct DOE(1): lost export
-# Source 1.03 pu, original CSIRO loads, 207-253 V PN at customer connections, equal allocation.
-# RUN    julia> include("scripts/bmopf/doe_severity_sweep.jl")
-# OUTPUT results/doe_severity_sweep.csv
+# What it does (plain English):
+#   Severity sweep ("dirty, then dirtier"): service-cable resistance error factor k.
+#   The TRUE street has service-cable conductor resistance x k (diagonal R only; the
+#   off-diagonal 0.0493 ohm/km Carson earth-return term is unchanged). Records always
+#   say k = 1 (Case A) or the reverse (Case B).
+#     DOE(k)        = correct equal export limit on a street with error k
+#     Case A (k>1)  : records k=1, truth k  -> issued DOE(1), correct DOE(k): over-promise
+#     Case B (k>1)  : records k, truth k=1  -> issued DOE(k), correct DOE(1): lost export
+#   Source 1.03 pu, original CSIRO loads, 207-253 V phase-to-neutral at customer
+#   connections, equal allocation. The voltage column is the older bound-point reading
+#   (everyone exports the issued DOE, Volt-Watt off; "counterfactual" = 5 kVA rating relaxed).
+#   Binding label "nameplate" here = the 5 kW export_max (doe_record_errors.jl calls it "other").
+# Inputs:   includes doe_common.jl (which loads load_lv3.jl and the LV3 .dss files)
+# Outputs:  results/doe_severity_sweep.csv (k, correct_kW, correct_binding, A_issued_kW,
+#           A_overpromise_pct, A_true_street_V, A_note, B_issued_kW, B_lost_pct); prints a table
+# How to run (from the repo folder, in `julia +1.11 --project=bmopf`):
+#   include("scripts/bmopf/doe_severity_sweep.jl")   (calls run_sweep() itself)
+# Used for: REPRODUCE.md step 5 and section 6 item 7 (k = 3.07: 2.739 kW vs 2.734 kW
+#           with the full line-code swap)
+# Credits:  CSIRO LV3 data and line codes (CC BY-NC-SA 4.0); BMOPFTools.jl and
+#           PowerOptLab.jl by Frederik Geth; Ipopt
+# =============================================================================
 
 include(joinpath(pwd(), "scripts", "bmopf", "doe_common.jl"))
 

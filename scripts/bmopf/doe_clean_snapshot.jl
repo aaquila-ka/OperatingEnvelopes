@@ -1,10 +1,20 @@
-# scripts/bmopf/doe_clean_snapshot.jl
+# =============================================================================
+# doe_clean_snapshot.jl: correct ("clean") DOEs on the true LV3 network, 1 kW snapshot
 #
-# Clean DOEs (answer key) on corrected LV3, original CSIRO loads, equal allocation,
-# 207-253 V phase-to-neutral at customer connections, AS/NZS 4777.2 inverters.
-# Source 1.00 pu (original) and 1.03 pu.
-# RUN    julia> include("scripts/bmopf/doe_clean_snapshot.jl")
-# OUTPUT results/doe_clean_snapshot.csv
+# What it does (plain English):
+#   Computes the answer key: the equal export limit for all 12 customers on LV3 with
+#   correct cable records, original CSIRO loads (1 kW, power factor 0.88 per house),
+#   207-253 V phase-to-neutral at customer connections, AS/NZS 4777.2 inverters.
+#   Done at source 1.00 pu (original) and 1.03 pu. Prints a per-house table and what
+#   limits export (inverter rating, voltage, or 5 kW nameplate).
+# Inputs:   includes doe_common.jl (which loads load_lv3.jl and the LV3 .dss files)
+# Outputs:  results/doe_clean_snapshot.csv (source_pu, house, export_limit_kW, status; 24 rows)
+# How to run (from the repo folder, in `julia +1.11 --project=bmopf`):
+#   include("scripts/bmopf/doe_clean_snapshot.jl")   (calls run_clean_snapshot() itself)
+# Used for: REPRODUCE.md step 3; 4.906 kW at 1.00 pu, 4.529 kW at 1.03 pu (both inverter-limited)
+# Credits:  CSIRO LV3 data (CC BY-NC-SA 4.0); BMOPFTools.jl and PowerOptLab.jl by
+#           Frederik Geth; Ipopt
+# =============================================================================
 
 include(joinpath(pwd(), "scripts", "bmopf", "doe_common.jl"))
 

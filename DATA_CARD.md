@@ -1,6 +1,6 @@
 # Data card: clean vs dirty DOE results (LV3 feeder)
 
-Last updated 14 Oct 2026 (dropout-secure DOEs added; after two independent reviews, see "How much to trust it").
+Every results file, what each column means, and how much to trust it. Start with README.md for the overview and REPRODUCE.md to re-run.
 
 ## What this is
 
@@ -18,14 +18,14 @@ How to regenerate everything: see REPRODUCE.md.
 |---|---|
 | Voltages | volts (V), **phase-to-neutral**, at the customer connection point |
 | Power | kW, positive = export |
-| Voltage limit | 253 V upper, 207 V lower (AS 61000.3.100), applied at customer connections only |
+| Voltage limit | 253 V upper (AS 60038:2012), 207 V lower (source to be confirmed, REPRODUCE.md known issue 32), applied at customer connections only |
 | Allocation | every customer gets the same limit (equal fairness) |
 | Source voltage | 1.03 pu unless a `source_pu` column says otherwise |
 | House names | OpenDSS load names, e.g. `ld1291_load_b` = load at bus 1291, phase b |
 | gap_kW | issued DOE minus correct DOE (positive = too generous) |
 | overpromise_pct | (issued - correct) / correct x 100; grows very large when the correct DOE is small, so always read it with gap_kW |
 | Bound-point voltage (`boundpoint_V_noVW`, old) | every customer exports exactly the issued DOE, Volt-Watt switched off; if the 5 kVA rating cannot deliver it, the rating is relaxed and the note says `counterfactual`. Worst case, not physical. |
-| Realised voltage (`realised_V_VW`, `*_V_VW`) | every customer MAY export up to the cap; inverters keep Volt-VAr, Volt-Watt and 5 kVA; no voltage limit imposed. This is the physical answer. Checked against independent OpenDSS: within 0.03 V. |
+| Realised voltage (`realised_V_VW`, `*_V_VW`) | every customer MAY export up to the cap; inverters keep Volt-VAr, Volt-Watt and 5 kVA; no voltage limit imposed. This is the physical answer. Checked against a separate OpenDSS model: within 0.03 V. |
 | n_customers_over_253 | customers whose realised voltage is above 253.005 V. Many are only 253.01-253.1 V, so read it together with the voltage. |
 | curtail_kW | total export the inverters cut back below the cap (5 kVA rating with reactive priority, or Volt-Watt) |
 
@@ -71,7 +71,7 @@ Rows: 120 each.
 | Scatter 5 % | ±0.1 %, max 252.79 V | -5.2 % to +4.3 % (gap ≤0.18 kW), max 253.09 V |
 | Scatter 10 % | -0.2 % to +0.3 %, max 252.88 V | -5.7 % to +9.3 % (gap ≤0.36 kW), max 253.20 V |
 | Scatter 20 % | up to +3.8 %, max 253.09 V | -5.8 % to +20.5 % (gap ≤0.72 kW), max 253.44 V |
-| 2 wrong cables | 0 to +49.7 %, max 254.19 V, 0-2 customers over | 0 to +76.6 % (median +62 %), max 254.58 V |
+| 2 wrong cables | 0 to +49.65 %, max 254.19 V, 0-2 customers over | 0 to +76.6 % (median +62 %), max 254.58 V |
 | 5 wrong cables | +30.8 to +65.7 %, max 254.60 V, 1-4 over | +66 to +117 %, max 255.15 V, 1-3 over |
 | 11 wrong cables | +33 to +65.7 %, max 254.60 V, 4-8 over, curtail ≤1.48 kW | +67 to +117 %, max 255.15 V, 3-7 over |
 
@@ -104,7 +104,7 @@ Rows: 48. Clean DOE 4.02-4.48 kW, voltage-limited at every step (at 1.03 pu). Is
 
 ## File 8: results/timeseries_profile_map.csv
 
-Which real profile each customer uses (load, profile, daily_kWh). Picked with seed 20261013 from the 99 profiles.
+Which real profile each customer uses (load, profile, daily_kWh). Picked with seed 20261013 (an arbitrary fixed number) from the 99 profiles.
 Source: Team-Nando OE1-Ideal, github.com/Team-Nando/OE1-Ideal, commit 96abbab, BSD-3 licence (data/profiles/TeamNando_OE1_LICENSE.txt). Anonymised Victorian smart-meter data, one day, 5-min P and Q (aggregate pf about 0.95), averaged to 30 min.
 
 ## File 9: results/doe_source_sweep.csv
@@ -185,13 +185,13 @@ Meaning: under proportional sharing every checked record releases that customer'
 - Cable currents at the clean DOE: 16 mm2 service cables at most 18.6 A, 240 mm2 Al mains 36.8 A, 400 mm2 Al 73.3 A; far below ratings (16 mm2 Cu 4-core XLPE: 110 A buried / 81 A in duct, Prysmian datasheet). Thermal limits do not bind on LV3.
 - Phase-secure equal DOE (highest equal limit safe for all 7 phase patterns, bisection with verify_operating_envelope): 4.313 kW vs 4.529 kW (-4.8 %, snapshot) and 3.841 vs 4.253 kW (-9.7 %, 12:00).
 
-## Files 19-22: LV3 dropout-secure DOE (14 Oct 2026)
+## Files 19-22: LV3 dropout-secure DOE
 
 Why: a DOE checked only with everyone exporting (bound point), or with whole phases silent (phase-secure), can still break 253 V when SOME customers export nothing. "Dropped" = that customer's export cap is 0; everyone else may export up to the DOE; realised reading.
 
 | File | Content | Key numbers |
 |---|---|---|
-| results/doe_dropout_lv3.csv | bound-point and phase-secure DOEs vs nobody + every 1 or 2 dropped customers (79 cases), snapshot and 12:00 | bound-point: 13 / 28 of 79 cases over 253 V (worst 253.16 / 253.30 V); phase-secure: 8 / 2 of 79 (253.04 / 253.08 V); the snapshot failures all involve ld1895_load_b dropped |
+| results/doe_dropout_lv3.csv | bound-point and phase-secure DOEs vs nobody + every 1 or 2 dropped customers (79 cases), snapshot and 12:00 | bound-point: 13 / 28 of 79 cases over 253 V (worst 253.16 / 253.30 V); phase-secure: 8 / 2 of 79 (253.04 / 253.08 V); the phase-secure snapshot failures all involve ld1895_load_b dropped |
 | results/doe_dropout_secure_lv3.csv | dropout-secure equal DOE (85 cases: nobody, 7 phase patterns, all 1- and 2-customer dropouts) | 4.203 kW snapshot, 3.664 kW 12:00 (-7.2 % / -13.8 % vs bound point); final check 0 of 85 over 253 V |
 | results/doe_dropout_lv3_full_day_1200_dropout_secure.csv | the 12:00 dropout-secure DOE vs all 4094 on/off combinations (`mask`: bit i = i-th customer in sorted id order dropped) | 0 of 4094 over 253 V; worst 253.00 V with all 4 phase-a customers silent |
 | results/doe_dropout_records_lv3.csv | headline redone: dropout-secure DOE from the records (16 mm2) applied on the true network; correct dropout-secure DOE on the true network | snapshot: gap 1.488 kW (+54.8 %), 254.62 V; 12:00: gap 1.718 kW (+88.2 %), 255.05 V; all 22 wrong: 85 of 85 cases over 253 V; l_3432 only: 70 of 85, same correct DOE |
@@ -200,7 +200,7 @@ Meaning: securing the DOE against customer behaviour (dropouts) does not secure 
 
 ## Second feeder: CSIRO LV9 (results/lv9/)
 
-LV9: 258 buses, 123 single-phase customers (41 per phase), 500 kVA, HV tap 1.000 (LV9 is about 2.5 % higher than LV3 at the same source pu). Prepared like LV3 (scripts/bmopf/lv9/prepare_lv9.jl). The 16 mm2 line code is used for 123 customer drops, 12 shared segments (carrying 2-43 customers) and 44 dead-end stubs.
+LV9: 258 buses, 123 single-phase customers (41 per phase), 500 kVA, HV tap 1.000 (LV9 is about 2.5 % higher than LV3 at the same source pu). Prepared like LV3 (scripts/bmopf/lv9/prepare_lv9.jl). The 16 mm2 line code is used for 123 customer drops, 12 shared segments (carrying 1-43 customers) and 44 dead-end stubs.
 
 | File | Content | Key numbers |
 |---|---|---|
@@ -222,8 +222,8 @@ LV9: 258 buses, 123 single-phase customers (41 per phase), 500 kVA, HV tap 1.000
 ## How much to trust it
 
 - Network model checked against OpenDSS: phase-to-neutral voltages within 0.11 V, neutral within 0.024 V, losses within 0.8 W once the switch and earthing modelling difference is accounted for (see REPRODUCE.md section 6, item 5).
-- Independent review (13 Oct 2026): a separate rebuild in OpenDSS (Python, not our code) reproduced the clean snapshot DOE (4.527 vs 4.529 kW, all customer voltages within 0.03 V), the l_3432 case (2.764 vs 2.734 kW; realised 254.61 vs 254.60 V) and the 12:00 step with 6 random sets of houses (clean 3.97-4.18 kW voltage-limited, Case A +97 to +119 %).
-- Second independent review: realised readings match an exact OpenDSS model within 0.03 V; sun-limited 11:30 and 12:00 values fall inside the OpenDSS ranges over 6 random profile sets; the non-monotone steps in file 10 reproduce in OpenDSS.
+- Cross-check: a separate rebuild directly in OpenDSS (Python, not using the thesis scripts; written with AI assistance and checked by the author) reproduced the clean snapshot DOE (4.527 vs 4.529 kW, all customer voltages within 0.03 V), the l_3432 case (2.764 vs 2.734 kW; realised 254.61 vs 254.60 V) and the 12:00 step with 6 random sets of houses (clean 3.97-4.18 kW voltage-limited, Case A +97 to +119 %).
+- Second cross-check: realised readings match an exact OpenDSS model within 0.03 V; sun-limited 11:30 and 12:00 values fall inside the OpenDSS ranges over 6 random profile sets; the non-monotone steps in file 10 reproduce in OpenDSS.
 - Seeded draws rerun identically (same Julia version).
 - curtail_kW mixes Volt-Watt and 5 kVA cutback, and BMOPF's smoothed Volt-Watt corner overstates it by about 5 % when many customers sit just above 253 V (all 22 wrong: 1.86 vs 1.78 kW with the exact curve). Voltages are not affected.
 - Limitations: see REPRODUCE.md section 6.
@@ -231,5 +231,5 @@ LV9: 258 buses, 123 single-phase customers (41 per phase), 500 kVA, HV tap 1.000
 ## Not in the data yet (planned)
 
 - LV9: day runs, record-error draws, 4 mm2 and aluminium current ratings (shared-cable thermal case).
-- More measured days and other sets of house profiles. The current day is AusNet day 350 (17 Dec 2014, lowest-demand day of the year); Team-Nando's 342-household x 365-day pool is the planned source for more days.
-- LV9 pair dropouts (7503 cases) and LV9 at 0.97 pu with the dropout-secure DOE.
+- More measured days and other sets of house profiles. The current day is day index 350 of the AusNet pool (the lowest-demand day in the dataset); Team-Nando's 342-household x 365-day pool is the planned source for more days.
+- LV9 pair dropouts (7503 cases). (LV9 at 0.97 pu with the dropout-secure DOE is done: results/lv9/lv9_midpoint_0.97.csv.)

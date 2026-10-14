@@ -1,16 +1,25 @@
-# scripts/bmopf/doe_phase_secure.jl
+# =============================================================================
+# doe_phase_secure.jl: phase-imbalance-secure equal DOE on LV3
 #
-# Phase-imbalance-secure equal DOE on LV3: the highest equal export limit that keeps every
-# customer within 207-253 V (inverter Volt-VAr/Volt-Watt and 5 kVA kept) not only when everyone
-# exports (bound point) but also when the customers of one or two phases export nothing
-# (7 phase patterns, PowerOptLab verify_operating_envelope with explicit utilisation vectors).
-# Found by bisection (10 steps, precision ~0.1 % of the bound-point DOE).
+# What it does (plain English):
+#   Finds the highest equal export limit that keeps every customer within 207-253 V (inverter
+#   Volt-VAr/Volt-Watt and 5 kVA kept) not only when everyone exports (bound point) but also
+#   when the customers of one or two whole phases export nothing (7 phase patterns, checked
+#   with PowerOptLab verify_operating_envelope and explicit utilisation vectors).
+#   Found by bisection between 0 and the bound-point DOE (10 steps, precision about 0.1 % of
+#   the bound-point DOE); the lower end 0 is assumed safe, not checked.
 #
-# RUN (fresh Julia, from C:\thesis\OperatingEnvelopes, julia +1.11 --project=bmopf)
-#   julia> using Logging; disable_logging(Logging.Warn)
-#   julia> include("scripts/bmopf/doe_phase_secure.jl")
-#   julia> run_phase_secure_lv3()
-# OUTPUT results/doe_phase_secure_lv3.csv
+# Inputs:   LV3 network and house profiles. Includes doe_timeseries.jl and
+#           phase_secure_core.jl (ps_doe, the 7 patterns).
+# Outputs:  results/doe_phase_secure_lv3.csv (2 rows); prints one line per setting.
+# How to run (from the repo folder, in `julia +1.11 --project=bmopf`):
+#   using Logging; disable_logging(Logging.Warn)
+#   include("scripts/bmopf/doe_phase_secure.jl")   then   run_phase_secure_lv3()
+# Used for: REPRODUCE.md step 18 (section 4 row "LV3 partial export / phase-secure");
+#           DATA_CARD.md file 18.
+# Credits:  CSIRO LV3 data (CC BY-NC-SA 4.0); BMOPFTools.jl and PowerOptLab.jl by Frederik
+#           Geth; Ipopt; Team-Nando OE1-Ideal profiles (BSD-3, AusNet smart-meter data).
+# =============================================================================
 
 include(joinpath(pwd(), "scripts", "bmopf", "doe_timeseries.jl"))
 include(joinpath(pwd(), "scripts", "bmopf", "phase_secure_core.jl"))

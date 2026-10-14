@@ -1,33 +1,47 @@
-# scripts/bmopf/doe_dropout_lv3.jl
+# =============================================================================
+# doe_dropout_lv3.jl: LV3 dropout check and the dropout-secure DOE
 #
-# DROPOUT CHECK on LV3 (Liu & Braslavsky 2022; PowerOptLab doe_dropout_utilizations idea).
-# A DOE is only checked at the "bound point" (everyone exports their full limit). On an
-# unbalanced four-wire feeder, some customers exporting NOTHING can shift the neutral and push
-# other customers higher. Here we take an issued equal DOE and apply it on the correct network
-# with some customers dropped to zero export, and read the realised voltages
-# (Volt-VAr, Volt-Watt, 5 kVA kept; no voltage limit imposed; same reading as fr_realised).
+# What it does (plain English):
+#   A DOE is normally checked only at the "bound point" (everyone exports their full limit).
+#   On an unbalanced four-wire feeder, some customers exporting NOTHING can shift the neutral
+#   and push other customers higher. Here an equal DOE is applied on the correct network with
+#   some customers dropped to zero export, and the realised voltages are read (Volt-VAr,
+#   Volt-Watt, 5 kVA kept; no voltage limit imposed; same reading as fr_realised). A case
+#   fails if the realised voltage is above 253.005 V or the solve gives NaN.
+#   Idea: B. Liu and J. H. Braslavsky, IEEE Access 2022 (see ACKNOWLEDGEMENTS.md);
+#   PowerOptLab doe_dropout_utilizations.
+#   Settings: 1 kW snapshot, and 12:00 of the profile day (day index 350), at 1.03 pu.
 #
-# Two DOEs are tested:  bound-point equal DOE, and our phase-secure DOE (7 phase patterns).
-# Two settings:         1 kW snapshot, and 12:00 of the profile day (day 350), at 1.03 pu.
+#   run_dropout_lv3()        bound-point and phase-secure DOEs vs nobody dropped + every set of
+#                            1 or 2 dropped customers (1 + 12 + 66 = 79 cases)
+#                            x 2 DOEs x 2 settings = 316 realised solves (about 2 min)
+#   run_dropout_secure_lv3() DROPOUT-SECURE DOE: highest equal limit that passes nobody dropped,
+#                            the 6 other phase patterns and every 1- or 2-customer dropout
+#                            (85 cases; bisection between 0.9 x and 1 x the phase-secure DOE,
+#                            about 5 min)
+#   run_dropout_lv3_full()   EVERY on/off combination (2^12 - 2 = 4094 cases: all-on and all-off
+#                            left out) for ONE DOE and ONE setting (default: dropout-secure DOE,
+#                            12:00); about 15-30 min. Writes as it goes; if stopped, run it again
+#                            and it continues. Resuming skips every mask already in the file
+#                            (FAIL rows included) and does not check that the file was made with
+#                            the same pu or DOE value, so delete the file before changing them.
+#                            Other choices: doe = "phase_secure" or "bound_point",
+#                            setting = "snapshot_1kW".
 #
-#  run_dropout_lv3()       every set of 1 or 2 dropped customers (12 + 66 = 78 cases)
-#                          x 2 DOEs x 2 settings = 312 solves (about 10-20 min)
-#  run_dropout_secure_lv3() DROPOUT-SECURE DOE: highest equal limit that passes the 7 phase
-#                          patterns AND every 1- or 2-customer dropout (bisection; ~5-10 min)
-#  run_dropout_lv3_full()  EVERY on/off combination (2^12 - 2 = 4094 cases) for ONE DOE and
-#                          ONE setting (default: dropout-secure DOE, 12:00). About 30 min
-#                          (~0.4 s per case). Writes as it goes; if stopped, run it again and it
-#                          continues. Other choices: doe = "phase_secure" or "bound_point",
-#                          setting = "snapshot_1kW".
-#
-# RUN (fresh Julia, from C:\thesis\OperatingEnvelopes, julia +1.11 --project=bmopf)
-#   julia> using Logging; disable_logging(Logging.Warn)
-#   julia> include("scripts/bmopf/doe_dropout_lv3.jl")
-#   julia> run_dropout_lv3()
-#   julia> run_dropout_secure_lv3()
-#   julia> run_dropout_lv3_full()
-# OUTPUT results/doe_dropout_lv3.csv, results/doe_dropout_secure_lv3.csv,
-#        results/doe_dropout_lv3_full_<setting>_<doe>.csv
+# Inputs:   LV3 network and house profiles. Includes doe_fairness.jl (fr_realised,
+#           read_profiles, ...) and phase_secure_core.jl (ps_doe, PS_PATTERNS).
+# Outputs:  results/doe_dropout_lv3.csv (316 rows), results/doe_dropout_secure_lv3.csv (2 rows),
+#           results/doe_dropout_lv3_full_<setting>_<doe>.csv (4094 rows; column mask: bit i-1
+#           set = customer ids[i] dropped, ids in sorted order).
+# How to run (from the repo folder, in `julia +1.11 --project=bmopf`):
+#   using Logging; disable_logging(Logging.Warn)
+#   include("scripts/bmopf/doe_dropout_lv3.jl")
+#   then   run_dropout_lv3()   run_dropout_secure_lv3()   run_dropout_lv3_full()
+# Used for: REPRODUCE.md steps 25, 26, 27 (section 4 rows "LV3 dropout check" and "LV3
+#           dropout-secure DOE"; section 6 items 19, 21, 22); DATA_CARD.md files 19-21.
+# Credits:  CSIRO LV3 data (CC BY-NC-SA 4.0); BMOPFTools.jl and PowerOptLab.jl by Frederik
+#           Geth; Ipopt; Team-Nando OE1-Ideal profiles (BSD-3, AusNet smart-meter data).
+# =============================================================================
 
 include(joinpath(pwd(), "scripts", "bmopf", "doe_fairness.jl"))          # fr_realised, read_profiles, ...
 include(joinpath(pwd(), "scripts", "bmopf", "phase_secure_core.jl"))     # ps_doe
@@ -54,7 +68,7 @@ function do_case(net, ids, dropped, kw)
     return fr_realised(net, caps)
 end
 
-# label like "c3+c7" (customer ids sorted)
+# label like "ld1668_load_a+ld24_load_a" (customer ids sorted; "none" if nobody dropped)
 do_label(dropped) = isempty(dropped) ? "none" : join(sort(collect(dropped)), "+")
 
 # ---------------------------------------------------------------------------------------------

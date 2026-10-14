@@ -1,25 +1,36 @@
-# scripts/bmopf/lv9/lv9_midpoint.jl
+# =============================================================================
+# lv9_midpoint.jl: the whole LV9 dropout-secure chain at extra source voltages (default 0.97 pu)
 #
-# LV9 at extra source voltages (default 0.97 pu), the whole chain in one go, written to its OWN
-# file so the existing 0.94 / 1.00 pu results are not overwritten:
-#   1. bound-point equal DOE and phase-secure DOE (7 phase patterns, verify_operating_envelope)
-#   2. dropout-secure DOE (realised reading; bisection on nobody + 6 phase patterns, then a final
-#      check over 130 cases: nobody, 6 phase patterns, each customer dropped)
-#   3. headline: issued dropout-secure DOE (records, 16 mm2) on the true network for
-#      "upstream_12" and "l_2373"; correct dropout-secure DOE on the true network; final check.
-# Same methods as lv9_phase_secure.jl, lv9_dropout.jl and lv9_dropout_records.jl.
-#
-# RUN (fresh Julia, from C:\thesis\OperatingEnvelopes, julia +1.11 --project=bmopf)
-#   julia> using Logging; disable_logging(Logging.Warn)
-#   julia> include("scripts/bmopf/lv9/lv9_midpoint.jl")
-#   julia> run_lv9_midpoint()                 # 0.97 pu, about 25-35 min
-#   julia> run_lv9_midpoint(pus = [0.96, 0.98])   # other points if wanted
-# OUTPUT results/lv9/lv9_midpoint_<pu>.csv  (one file per source voltage)
+# What it does (plain English): runs every LV9 step at another source voltage in one go and
+#   writes it to its OWN file, so the 0.94 / 1.00 pu results are not overwritten:
+#     1. bound-point equal DOE and phase-secure DOE (7 phase patterns, verify_operating_envelope)
+#     2. dropout-secure DOE (realised reading; bisection on nobody + 6 phase patterns, then a
+#        final check over 130 cases: nobody, 6 phase patterns, each customer dropped)
+#     3. headline: issued dropout-secure DOE (records, 16 mm2) on the true network for
+#        "upstream_12" and "l_2373"; correct dropout-secure DOE on the true network; final
+#        check. Gap = issued minus correct.
+#   Same methods as lv9_phase_secure.jl, lv9_dropout.jl and lv9_dropout_records.jl.
+# Inputs:   data/networks/LV9_258bus_withPV/; includes lv9_core.jl and lv9_dropout.jl
+#           (which brings in lv9_common.jl and phase_secure_core.jl). Reads no earlier csv.
+# Outputs:  results/lv9/lv9_midpoint_<pu>.csv (one file per source voltage); progress printed.
+# How to run (from the repo folder, in `julia +1.11 --project=bmopf`):
+#   using Logging; disable_logging(Logging.Warn)
+#   include("scripts/bmopf/lv9/lv9_midpoint.jl")   then
+#   run_lv9_midpoint()                         # 0.97 pu, about 25-35 min
+#   run_lv9_midpoint(pus = [0.96, 0.98])       # other points if wanted
+# Used for: the 0.97 pu LV9 result (dropout-secure 1.876 kW, gap 0.430 kW with the 12 shared
+#           segments wrong; results/lv9/lv9_midpoint_0.97.csv). REPRODUCE.md step 31.
+# Credits:  CSIRO LV9 feeder data ("Realistic Australian MV feeder with associated LV
+#           feeders" v1, doi 10.25919/ghnz-bk28, CC BY-NC-SA 4.0; copy shipped with
+#           BMOPFTools b7aa9a1, test/data/LV/LV9_258bus); BMOPFTools.jl (b7aa9a1) and
+#           PowerOptLab.jl (953e45c) by Frederik Geth; JuMP and Ipopt
+# =============================================================================
 
 include(joinpath(pwd(), "scripts", "bmopf", "lv9", "lv9_core.jl"))       # segment_sets, set_small!
 include(joinpath(pwd(), "scripts", "bmopf", "lv9", "lv9_dropout.jl"))    # lv9_dropout_sets, lv9_check, ps_doe
 
-# highest equal kw in [lo0, hi] passing lv9_check on `sets` (bisection); returns lo
+# highest equal kw in [lo0, hi] passing lv9_check on `sets` (bisection); returns lo.
+# Never returns more than hi, so a correct DOE found this way gives a gap of 0 or more.
 function lv9_bisect(net, ids, sets, hi; lo0 = 0.0, iters = 10)
     lv9_check(net, ids, sets, hi).ok && return hi
     lo = lo0

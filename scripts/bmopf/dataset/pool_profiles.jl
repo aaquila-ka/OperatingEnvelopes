@@ -1,18 +1,30 @@
-# scripts/bmopf/dataset/pool_profiles.jl
+# =============================================================================
+# pool_profiles.jl: read and check Team-Nando's AusNet house-usage pool (.npy files)
 #
-# DATASET STEP 1: load Team-Nando's AusNet house-usage pool (342 households x 365 days x 48
-# half-hours) and the matching PV shape (365 x 48), and check them.
-# No extra packages: a small reader for the .npy format is written here.
+# What it does (plain English):
+#   Loads Team-Nando's AusNet house-usage pool (342 households x 365 days x 48 half-hours,
+#   average kW) and the matching PV shape (365 days x 48), and checks them: SHA1 of both
+#   files, shapes, missing (all-zero) days, value ranges, mean daily kWh per house (lowest,
+#   median and highest day), PV daily energy. Then checks that the 99 OE1 profiles used in
+#   the day runs equal the pool's day index 350 (the lowest-demand day in the dataset).
+#   No extra packages: a small reader for the .npy format is written here.
+#   Day indices are printed 0-based (as in the Python source); Julia arrays are 1-based, so
+#   day index 350 is Julia day 351. The year is not stated in the source data; the printed
+#   calendar dates use an inferred start date (POOL_DAY0) and are labels only.
 #
-# FILES NEEDED (download once, see the chat instructions), in data/profiles/pool/:
-#   Residential load data 30-min resolution.npy
-#   Residential PV data 30-min resolution.npy
-#   README_pool.md, TeamNando_LICENSE.txt
-#
-# RUN (fresh Julia, from C:\thesis\OperatingEnvelopes, julia +1.11 --project=bmopf)
-#   julia> include("scripts/bmopf/dataset/pool_profiles.jl")
-#   julia> check_pool()                   # a few seconds
-# OUTPUT results/dataset/pool_check.txt
+# Inputs:   data/profiles/pool/ (download once, see data/profiles/pool/README_pool.md):
+#             Residential load data 30-min resolution.npy
+#             Residential PV data 30-min resolution.npy
+#             README_pool.md, TeamNando_LICENSE.txt
+#           data/profiles/TeamNando_OE1_LoadShapes.txt (for the OE1 cross-check).
+# Outputs:  results/dataset/pool_check.txt (same lines as printed).
+# How to run (from the repo folder, in `julia +1.11 --project=bmopf`):
+#   include("scripts/bmopf/dataset/pool_profiles.jl")   then   check_pool()   (a few seconds)
+# Used for: the profile-day statements in REPRODUCE.md section 2 (day index 350, 9.71 vs
+#           12.06 kWh, OE1 shapes equal the pool values); planned source for more days.
+# Credits:  Team-Nando OE1-Ideal / MV-LV-Networks / OEs-The-Basics profiles (BSD-3, AusNet
+#           smart-meter data).
+# =============================================================================
 
 using Printf, SHA, Dates
 
@@ -21,6 +33,7 @@ const POOL_LOAD = joinpath(POOL_DIR, "Residential load data 30-min resolution.np
 const POOL_PV   = joinpath(POOL_DIR, "Residential PV data 30-min resolution.npy")
 const POOL_SHA  = Dict(POOL_LOAD => "145d73c070f7e95c14524db684918b47daaf1e6e",
                        POOL_PV   => "59cf9e081d22f54a272ede4a7a8dfaa1c7dd48ce")
+# start date for printed labels only: the year is not stated in the data and is inferred
 const POOL_DAY0 = Date(2014, 1, 1)          # inferred year (see README_pool.md)
 
 # read a little-endian float64, C-ordered .npy file into a Julia array with the same index order

@@ -1,16 +1,24 @@
-# scripts/bmopf/doe_critical_cables.jl
+# =============================================================================
+# doe_critical_cables.jl: which service cables matter? One wrong cable at a time
 #
-# STEP 2.5 (v2): which service cables are critical?  v2 adds the realised voltage with
-# Volt-Watt on (customers may export up to the issued DOE), customers above 253 V and curtailment.
-# One cable at a time: the record says 16 mm2 (catalogue) but THIS ONE segment is really
-# 4 mm2; all other 21 segments are correct. For each segment we compute the correct DOE,
-# the over-promise of the issued (catalogue) DOE, and the real street voltage.
-# Uses the same functions and settings as doe_record_errors.jl (1.03 pu, equal allocation).
-#
-# RUN (fresh Julia, from C:\thesis\OperatingEnvelopes, julia +1.11 --project=bmopf)
-#   julia> include("scripts/bmopf/doe_critical_cables.jl")
-#   julia> run_critical_cables()
-# OUTPUT results/doe_critical_cables.csv   (sorted, most harmful segment first)
+# What it does (plain English):
+#   One cable at a time: the record says 16 mm2 (catalogue) but THIS ONE segment is
+#   really 4 mm2; the other 21 segments are correct. For each of the 22 segments it
+#   computes the correct DOE, the over-promise of the issued (catalogue) DOE, the old
+#   bound-point voltage, and the realised voltage with Volt-Watt on (customers may
+#   export up to the issued DOE), customers above 253 V and curtailment.
+#   Uses the same functions and settings as doe_record_errors.jl (1.03 pu, 1 kW
+#   snapshot, equal allocation).
+# Inputs:   includes doe_record_errors.jl (-> doe_common.jl -> load_lv3.jl)
+# Outputs:  results/doe_critical_cables.csv (sorted, most harmful segment first;
+#           `length` is in metres); prints a table and how many segments give > 1 %
+# How to run (from the repo folder, in `julia +1.11 --project=bmopf`, fresh session):
+#   include("scripts/bmopf/doe_critical_cables.jl")   then   run_critical_cables()
+# Used for: REPRODUCE.md step 8 (12 of 22 segments matter; l_3432 alone gives the same
+#           DOE as all 22 wrong, realised 254.60 V, 1 customer above 253 V)
+# Credits:  CSIRO LV3 data and line codes (CC BY-NC-SA 4.0); BMOPFTools.jl and
+#           PowerOptLab.jl by Frederik Geth; Ipopt
+# =============================================================================
 
 include(joinpath(pwd(), "scripts", "bmopf", "doe_record_errors.jl"))
 

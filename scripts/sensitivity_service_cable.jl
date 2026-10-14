@@ -1,5 +1,30 @@
 # =============================================================================
-# sensitivity_service_cable.jl
+# sensitivity_service_cable.jl: how far do LV3 voltages move if service-cable records are wrong?
+#
+# What it does (plain English): loads LV3 in OpenDSS, then replaces the
+#   ugsc_16cu service-cable line code (22 segments) by scaled copies with the
+#   self resistance multiplied by 1.0 / 1.16 / 1.35 / 2.0 / 3.065 / 5.0 (and
+#   reactance scaled gently in step), re-solves, and records how much the
+#   phase-to-neutral voltages change, over all LV nodes and at the 12
+#   customer connection points. Factor 1.0 is a control (should change ~0).
+#   This is a power flow sensitivity only; no DOEs are computed here.
+# Inputs:   data/networks/LV3_55bus_withPV/Master.dss
+# Outputs:  results/sensitivity_service_cable.csv; prints the operating point,
+#           baseline statistics and one line per factor
+# How to run (from the repo folder, in `julia +1.9 --project=.`; this is the
+#   older top-level project, Julia 1.9.4 Manifest, not bmopf/):
+#   include("scripts/sensitivity_service_cable.jl")
+#   The MASTER and OUTCSV paths below are hard-coded to C:\thesis\OperatingEnvelopes;
+#   edit them if the repo is elsewhere.
+# Used for: the go/no-go decision to use service-cable impedance error as the
+#   thesis perturbation; early exploration, not a numbered REPRODUCE.md step.
+#   The saved results/sensitivity_service_cable.csv comes from an earlier
+#   model state (source 1.07 pu, PV connected phase-to-ground, transformer
+#   star point on ground: max_V about 266 V and 163-164 of 165 nodes above
+#   253 V in every row). scripts/notes/worklog.md records that these numbers
+#   must be regenerated; a rerun with the current Master.dss (1.00 pu) gives
+#   different values.
+# Credits:  CSIRO LV3 network data (LV3_55bus_withPV); OpenDSS (EPRI) via OpenDSSDirect.jl
 #
 # PURPOSE
 #   Answer the go/no-go question: if the service cable records are wrong,
@@ -75,9 +100,11 @@ const OUTCSV = raw"C:\thesis\OperatingEnvelopes\results\sensitivity_service_cabl
 
 const TARGET = "ugsc_16cu_xlpe/nyl/pvc_ug_4w_bundled"   # cable type to perturb
 
-# Voltage nodes above this are on the 11 kV side, not the LV feeder. LV3 has
-# 3 such nodes on the source bus at ~6795 V. Including them makes the mean and
-# standard deviation meaningless, so they are excluded from all statistics.
+# Voltage nodes above this are on the 11 kV side, not the LV feeder. In LV3
+# these are the 3 phase nodes of sourcebus (skipped anyway, as it has no
+# neutral node 4) and the 3 phase nodes of b804 (transformer 11 kV side),
+# about 6351 V at 1.00 pu (6795 V at 1.07 pu). Including them makes the mean
+# and standard deviation meaningless, so they are excluded from all statistics.
 const LV_CEILING = 400.0
 
 # R multipliers to test. 3.065 is the real 16cu -> 4cu swap; the others
@@ -88,11 +115,15 @@ const R_FACTORS = [1.0, 1.16, 1.35, 2.0, 3.065, 5.0]
 
 # Tolerance for the control check. Not 0, because the linecode is rebuilt from
 # text and loses a little precision. 0.01 V is ~0.2% of the 4.58 V baseline
-# spread, far below anything the thesis reports.
+# spread seen at the time (that spread was later traced to the transformer
+# star point being tied to ground; see worklog), and far below anything the
+# thesis reports.
 const CONTROL_TOL = 0.01
 
 # X scales far less than R between cable types, so it gets its own factor.
-# For the 16cu -> 4cu swap: X factor = 0.264871 / 0.252757 = 1.048.
+# For the 16cu -> 4cu swap: X factor = 0.264871 / 0.252757 = 1.048 (self X).
+# The mutual X terms of the two line codes differ by about 1.074-1.076, so
+# scaling the whole X matrix by 1.048 is an approximation of the real swap.
 const X_FACTOR_AT_SWAP = 1.048
 const R_FACTOR_AT_SWAP = 3.065
 
@@ -102,11 +133,11 @@ const R_FACTOR_AT_SWAP = 3.065
 
 Load an OpenDSS network file and solve it.
 
-KNOWN BUG BEING WORKED AROUND
+OBSERVED BEHAVIOUR WORKED AROUND
   In OpenDSSDirect v0.9.9 on Julia 1.9.4, the first Solve() after a
   Clear + Redirect reports Converged() == true but leaves every node voltage
   at exactly zero. Discard that solve, reload, and solve again. Because
-  Converged() lies here, we check the voltages themselves via @assert.
+  Converged() still reports true here, we check the voltages themselves via @assert.
 """
 function load_circuit(master)
     dss("Clear"); dss("Redirect \"$master\""); Solution.Solve()
@@ -170,7 +201,7 @@ Return LV phase-to-neutral voltage magnitudes, keyed by "bus.phase".
 
 Circuit.AllBusVolts() returns phase-to-GROUND complex voltages. Phase-to-
 neutral is obtained by subtracting the bus's own neutral (node 4) phasor.
-The supervisors agreed on 2026-08-20 that phase-to-neutral is the quantity
+The supervisors agreed that phase-to-neutral is the quantity
 this thesis reports, so every voltage number must come through this function.
 
 Nodes above LV_CEILING are on the 11 kV side and are excluded.
@@ -304,6 +335,9 @@ function run_sweep()
     npv, pvkw, pvkvar = pv_summary()
     println("OPERATING POINT")
     println("  PVSystems: ", npv)
+    # Sign note: PVsystems.kW() is the PV output, which OpenDSS normally
+    # reports as POSITIVE when generating; check the printed sign rather than
+    # relying on the "(negative = exporting)" label.
     println("  total P:   ", round(pvkw, digits=2), " kW  (negative = exporting)")
     println("  total Q:   ", round(pvkvar, digits=2), " kvar")
     if abs(pvkw) < 1.0

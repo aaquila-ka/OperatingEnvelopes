@@ -1,24 +1,36 @@
-# scripts/bmopf/lv9/lv9_dropout.jl
+# =============================================================================
+# lv9_dropout.jl: LV9 dropout check and dropout-secure DOE (130 cases)
 #
-# DROPOUT CHECK on LV9 (same idea as scripts/bmopf/doe_dropout_lv3.jl).
-# On LV3, checking (nobody dropped + 7 phase patterns + every 1 or 2 dropped customers) found
-# the same worst case as checking all 4094 on/off combinations. LV9 has 123 customers, so all
-# combinations (2^123) are impossible and pairs alone are 7503 cases. Here we check:
-#     nobody dropped + 6 phase patterns + each single customer dropped  = 130 cases
-# for the PHASE-SECURE DOE already found by lv9_phase_secure.jl (read from its csv), on the
-# correct network, with the realised reading (Volt-VAr, Volt-Watt, 5 kVA kept; no voltage limit).
-# Voltage limits only (no thermal limits), like lv9_phase_secure.jl.
-#
-# If everything stays <= 253 V, the phase-secure DOE is also dropout-secure (single dropouts).
-# If some fail, the next script lowers the DOE (bisection), like doe_dropout_lv3.jl.
-#
-# RUN (fresh Julia, from C:\thesis\OperatingEnvelopes, julia +1.11 --project=bmopf)
-#   julia> using Logging; disable_logging(Logging.Warn)
-#   julia> include("scripts/bmopf/lv9/lv9_dropout.jl")
-#   julia> run_lv9_dropout_check()          # 0.94 and 1.00 pu; prints time per case after 10
-#   julia> run_lv9_dropout_secure()         # step 2 (see bottom of file)
-# NEEDS   results/lv9/lv9_phase_secure.csv  (from run_phase_secure_lv9)
-# OUTPUT  results/lv9/lv9_dropout_check.csv
+# What it does (plain English): same idea as scripts/bmopf/doe_dropout_lv3.jl. On LV3,
+#   checking (nobody dropped + 7 phase patterns + every 1 or 2 dropped customers) found the
+#   same worst case as checking all 4094 on/off combinations. LV9 has 123 customers, so all
+#   combinations (2^123) are impossible and pairs alone are 7503 cases. Here the cases are
+#     nobody dropped + 6 phase patterns + each single customer dropped = 1 + 6 + 123 = 130
+#   ("dropped" = that customer's export cap is 0; everyone else may export up to the DOE;
+#   realised reading, voltage limits only, no thermal limits; fail = above 253.005 V or a
+#   failed solve).
+#   Step 1 (run_lv9_dropout_check): the PHASE-SECURE DOE from lv9_phase_secure.jl, checked
+#     on the correct network for all 130 cases.
+#   Step 2 (run_lv9_dropout_secure, further down in this file): a diagnostic comparing
+#     verify_operating_envelope with the realised reading per phase pattern, then the
+#     DROPOUT-SECURE DOE by bisection, and a final check over all 130 cases.
+# Inputs:   results/lv9/lv9_phase_secure.csv (from run_phase_secure_lv9, step 24);
+#           data/networks/LV9_258bus_withPV/; includes lv9_common.jl and
+#           scripts/bmopf/phase_secure_core.jl (PS_PATTERNS, ps_patterns, ps_doe).
+# Outputs:  results/lv9/lv9_dropout_check.csv (step 1); results/lv9/lv9_dropout_secure.csv
+#           and lv9_dropout_diagnostic.csv (step 2); progress and failures printed.
+# How to run (from the repo folder, in `julia +1.11 --project=bmopf`):
+#   using Logging; disable_logging(Logging.Warn)
+#   include("scripts/bmopf/lv9/lv9_dropout.jl")   then
+#   run_lv9_dropout_check()          # 0.94 and 1.00 pu; prints time per case after 10
+#   run_lv9_dropout_secure()         # 0.94 and 1.00 pu
+# Used for: REPRODUCE.md step 29 (section 4 row "LV9 dropout check / dropout-secure":
+#           2.423 kW at 0.94 pu, 1.097 kW at 1.00 pu); its csv is read by step 30.
+# Credits:  CSIRO LV9 feeder data ("Realistic Australian MV feeder with associated LV
+#           feeders" v1, doi 10.25919/ghnz-bk28, CC BY-NC-SA 4.0; copy shipped with
+#           BMOPFTools b7aa9a1, test/data/LV/LV9_258bus); BMOPFTools.jl (b7aa9a1) and
+#           PowerOptLab.jl (953e45c) by Frederik Geth; JuMP and Ipopt
+# =============================================================================
 
 include(joinpath(pwd(), "scripts", "bmopf", "lv9", "lv9_common.jl"))
 include(joinpath(pwd(), "scripts", "bmopf", "phase_secure_core.jl"))   # PS_PATTERNS
@@ -134,7 +146,9 @@ function run_lv9_dropout_secure(; pus = [0.94, 1.00], iters = 8)
             push!(drows, @sprintf("%.3f,%.6f,%s,%s,%s,%.4f,%d,\"%s\"", pu, hi, pat, ev.feasible[1],
                                   string(ev.termination_status[1]), rv.v, rv.n_over, rv.who))
         end
-        # (2) bisection on the realised reading (phase patterns only)
+        # (2) bisection on the realised reading (phase patterns only), between 0.9 x (or 0) and the
+        #     phase-secure DOE, so the result is never above the phase-secure DOE. Note: the
+        #     `iters += 4` fallback below also carries over to the next source voltage.
         lo = 0.9 * hi
         if !lv9_check(net, ids, psets, lo).ok
             lo = 0.0; iters += 4

@@ -1,12 +1,21 @@
-# ============================================================
-# pmd_03_powerflow.jl
-# Task 3: solve a power flow in PMD on the 3-bus test network.
+# =============================================================================
+# pmd_03_powerflow.jl: solve a power flow in PowerModelsDistribution on a 3-bus test network
 #
-# OpenDSS solves power flow with its own built-in method.
-# PMD does NOT have one. It writes the power flow equations
-# as a mathematical problem and hands them to a solver.
-# That solver is Ipopt.
-# ============================================================
+# What it does (plain English): solves an unbalanced AC power flow on PMD's
+#   3-bus test network (case3_unbalanced.dss) and prints the solver status,
+#   solve time, what the solution contains and the bus voltage magnitudes.
+#   OpenDSS solves power flow with its own built-in method. PMD (in this
+#   usage) writes the power flow equations as a mathematical problem and
+#   hands them to a solver, here Ipopt.
+# Inputs:   <PMD package folder>/test/data/opendss/case3_unbalanced.dss
+# Outputs:  printed only, no files written
+# How to run (from the repo folder, in `julia +1.9 --project=.`; the older
+#   top-level PowerModelsDistribution project, not bmopf/):
+#   include("scripts/study/pmd_03_powerflow.jl")
+# Used for: learning PMD (study exercise), not used for thesis results
+# Credits:  PowerModelsDistribution.jl (PMD) and its test network
+#   case3_unbalanced.dss; Ipopt (via Ipopt.jl)
+# =============================================================================
 
 using PowerModelsDistribution   # network modelling and formulations
 using Ipopt                     # the numerical solver that does the work
@@ -45,7 +54,12 @@ end
 
 # --- Look at the bus voltages --------------------------------
 # "vm" = voltage magnitude, one value per terminal at each bus.
-# These are in PER UNIT, not volts. More on that below.
+# Units: when the input is an engineering model, PMD by default converts the
+# solution back to engineering units (make_si = true), so vm is expected in
+# kV, not per unit; pmd_04_compare_opendss.jl multiplies it by 1000 to get
+# volts. The label printed below says "per unit": check the printed values
+# (about 0.23 means kV phase-to-ground on this 0.4 kV case, about 1.0 would
+# mean per unit).
 println()
 println("Bus voltage magnitudes (per unit):")
 for (name, bus) in result["solution"]["bus"]

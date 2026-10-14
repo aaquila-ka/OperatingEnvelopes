@@ -1,22 +1,34 @@
-# scripts/bmopf/load_lv3.jl
+# =============================================================================
+# load_lv3.jl: load the CSIRO LV3 feeder into BMOPFTools and set the inverter controls
 #
-# PURPOSE
-#   Load the LV3_55bus_withPV OpenDSS model into BMOPFTools and correct the
-#   inverter control settings that PowerIO v0.7.3 mis-translates.
+# What it does (plain English):
+#   Reads the OpenDSS model of the LV3 street (55 buses, 12 houses, each with a
+#   5 kVA solar inverter) into BMOPFTools. The importer (PowerIO v0.7.3) carries the
+#   OpenDSS inverter curves over in a different convention from the one BMOPFTools
+#   expects, so this file rewrites them: Volt-VAr (reactive power vs voltage) and
+#   Volt-Watt (active power cut-back vs voltage), AS/NZS 4777.2 "Australia A" values,
+#   in volts, measured phase-to-neutral (PN). It then checks the result and saves the
+#   BMOPFTools analyze() report.
+# Inputs:   data/networks/LV3_55bus_withPV/Master.dss (and the .dss files it redirects to)
+# Outputs:  results/analyze_lv3_after_ctrlfix.txt; prints the analyze() findings and the
+#           final curve corners. The last lines run on every include, so any script that
+#           includes this file (through doe_common.jl) rewrites that report (same content).
+# How to run (from the repo folder, in `julia +1.11 --project=bmopf`):
+#   include("scripts/bmopf/load_lv3.jl")   (runs straight away; load_lv3() returns the network)
+# Used for: REPRODUCE.md step 1; every LV3 DOE script builds its network with load_lv3()
+# Credits:  CSIRO LV3 network data (CC BY-NC-SA 4.0); BMOPFTools.jl by Frederik Geth
+#           (with its PowerIO importer); OpenDSS (EPRI); AS/NZS 4777.2 curve values
+# =============================================================================
 #
-# HOW TO RUN (from C:\thesis\OperatingEnvelopes)
-#   julia +1.11 --project=bmopf
-#   julia> include("scripts/bmopf/load_lv3.jl")
-#
-# ENVIRONMENT
-#   Julia 1.11, BMOPFTools commit b7aa9a1, Preferences pinned at 1.5.2.
+# Environment: Julia 1.11, BMOPFTools commit b7aa9a1, Preferences pinned at 1.5.2.
 #
 # ORDER CONVENTIONS (read from BMOPFTools source ext/BMOPFOpfExt/ibr.jl, b7aa9a1)
 #   volt_var  q_limits = [q_absorb (<=0), q_inject (>=0)]   (lines 293-295)
+#             (fractions of the inverter rating s_max: Q = s_max x curve value)
 #   volt_watt p_limits = [p_low (cut-back level), p_high (full output)]
 #             curve value is p_high at U5 and p_low at U6   (lines 326-328)
-#   13 Oct 2026: an earlier version used [1.0, 0.2], which INVERTED the
-#   Volt-Watt curve. Caught in independent review; fixed below.
+#   An earlier version of this file used [1.0, 0.2], which INVERTED the
+#   Volt-Watt curve. Caught in code review; fixed below.
 
 using BMOPFTools
 
@@ -46,6 +58,9 @@ function load_lv3()
     for ibr in values(net["ibr"])
         ibr["control_profile"] = "invall"
     end
+    # The importer also linked PV Ld24 to a fixed power-factor profile (pf=-0.95 in
+    # PVSystems.dss). In BMOPFTools that profile would take priority over the droop
+    # curves, while in OpenDSS the InvControl takes over, so it is removed here.
     delete!(net["control_profile"], "Ld24_LOAD_A_pf")
 
     # ---- 4. Checks ---------------------------------------------------------

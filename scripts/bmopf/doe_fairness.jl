@@ -1,25 +1,34 @@
-# scripts/bmopf/doe_fairness.jl
+# =============================================================================
+# doe_fairness.jl: does the sharing rule decide who pays for a wrong cable record?
 #
-# STEP 5: does the sharing rule decide who pays for a wrong record?
-# Policies (PowerOptLab fairness): :equal (used so far), :proportional (maximise sum of log),
-# :max_min (raise the smallest limit first, then the total).
-# Cases on the TRUE street (records always say all 16 mm2):
-#   l_3432 wrong  : only customer Ld1291's service cable is really 4 mm2 (the critical one)
-#   l_4155 wrong  : only customer Ld1668's cable is really 4 mm2 (the mildest one)
-#   all 22 wrong  : every service cable is really 4 mm2 (Case A)
-# For each policy: issued limits = policy DOE on the records; correct limits = policy DOE on the
-# true street. Per customer gap = issued - correct. Then the issued limits are applied on the
-# true street (realised: inverters keep Volt-VAr, Volt-Watt, 5 kVA; no voltage limit imposed).
-# Settings: CSIRO 1 kW snapshot and the 12:00 loads of the real day; source 1.03 pu.
+# What it does (plain English):
+#   Computes per-customer export limits under three PowerOptLab sharing rules: :equal (used
+#   elsewhere), :proportional (maximise sum of log) and :max_min (raise the smallest limit
+#   first, then the total). Issued limits = rule applied on the records (all 16 mm2); correct
+#   limits = rule applied on the TRUE street; per-customer gap = issued - correct. The issued
+#   limits are then applied on the true street (realised reading: inverters keep Volt-VAr,
+#   Volt-Watt and 5 kVA; no voltage limit imposed).
+#   True-street cases: l_3432 wrong (only customer Ld1291's cable is really 4 mm2, the critical
+#   one), l_4155 wrong (only Ld1668's cable, the mildest one), all 22 wrong (Case A).
+#   Settings: CSIRO 1 kW snapshot and the 12:00 loads of the profile day; source 1.03 pu.
+#   Also defines fr_realised(), the realised reading reused by doe_partial_lv3.jl and the
+#   dropout scripts. In fr_realised a customer with limit 0 is given a 1 W cap (export_max
+#   floor), so it may still inject up to 1 W and curtail_kW comes out about 0.001 kW lower per
+#   such customer (visible as -0.004 / -0.008 in results/doe_partial_lv3.csv).
+#   Note: curtail_kW mixes Volt-Watt and 5 kVA cutback, and BMOPF's smoothed Volt-Watt corner
+#   overstates it by about 5 % when many customers sit just above 253 V (voltages unaffected).
 #
-# RUN (fresh Julia, from C:\thesis\OperatingEnvelopes, julia +1.11 --project=bmopf)
-#   julia> using Logging; disable_logging(Logging.Warn)
-#   julia> include("scripts/bmopf/doe_fairness.jl")
-#   julia> run_fairness()
-# OUTPUT results/doe_fairness_summary.csv, results/doe_fairness_customers.csv
-# v2 (after second review): records WHICH customers are above 253 V, issued max, NaN guard.
-# Note: curtail_kW mixes Volt-Watt and 5 kVA cutback, and BMOPF's smoothed Volt-Watt corner
-# overstates it by about 5 % when many customers sit just above 253 V (voltages unaffected).
+# Inputs:   LV3 network and house profiles (as doe_timeseries.jl). Includes doe_timeseries.jl.
+# Outputs:  results/doe_fairness_summary.csv (18 rows), results/doe_fairness_customers.csv
+#           (216 rows); prints a summary table. Records which customers are above 253 V.
+# How to run (from the repo folder, in `julia +1.11 --project=bmopf`):
+#   using Logging; disable_logging(Logging.Warn)
+#   include("scripts/bmopf/doe_fairness.jl")   then   run_fairness()
+# Used for: REPRODUCE.md step 13 (section 4 row "Sharing rules"; section 6 item 3);
+#           DATA_CARD.md files 11 and 12.
+# Credits:  CSIRO LV3 data (CC BY-NC-SA 4.0); BMOPFTools.jl and PowerOptLab.jl by Frederik
+#           Geth; Ipopt; Team-Nando OE1-Ideal profiles (BSD-3, AusNet smart-meter data).
+# =============================================================================
 
 include(joinpath(pwd(), "scripts", "bmopf", "doe_timeseries.jl"))
 

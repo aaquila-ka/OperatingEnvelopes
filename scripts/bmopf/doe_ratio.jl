@@ -1,21 +1,33 @@
-# scripts/bmopf/doe_ratio.jl
+# =============================================================================
+# doe_ratio.jl: does the 4 mm2 / 16 mm2 resistance ratio matter? (3.07 dataset vs 4.0 IEC)
 #
-# STEP (b): how much does the cable resistance ratio matter?
-# The dataset's line codes give 4 mm2 / 16 mm2 = 3.07 (its 16 mm2 code is about 30 % above the
-# IEC 60228 maximum, its 4 mm2 code close to IEC). IEC 60228 maximum DC values give about 4.0.
-# Records always say 16 mm2 (dataset code). The TRUE street has all 22 service cables:
-#   dataset_4mm2_code   : the dataset's 4 mm2 line code (whole code swapped; ratio 3.07)  [as before]
-#   diagR_x3.07         : 16 mm2 code with diagonal R x 3.07 (consistency check vs the swap)
-#   diagR_x4.00_IEC     : 16 mm2 code with diagonal R x 4.0 (IEC-like ratio)
-# Settings: 1 kW snapshot, 11:30 and 12:00 of the real day; source 1.03 pu; equal allocation.
-# Reports the correct DOE, the gap, and the realised voltage with Volt-Watt on: worst case
-# (may export the full issued DOE) and sun-limited (cap = min(DOE, 5 kW x pv_shape)).
-#
-# RUN (fresh Julia, from C:\thesis\OperatingEnvelopes, julia +1.11 --project=bmopf)
-#   julia> using Logging; disable_logging(Logging.Warn)
-#   julia> include("scripts/bmopf/doe_ratio.jl")
-#   julia> run_ratio()
-# OUTPUT results/doe_ratio.csv
+# What it does (plain English):
+#   The dataset's line codes give 4 mm2 / 16 mm2 = 3.07 (its 16 mm2 code is about 30 %
+#   above the IEC 60228 maximum, its 4 mm2 code close to IEC). IEC 60228 maximum DC
+#   values give about 4.0. Records always say 16 mm2 (dataset code). The TRUE street
+#   has all 22 service cables:
+#     dataset_4mm2_code : the dataset's 4 mm2 line code (whole code swapped; ratio 3.07),
+#                         the same as in every other script
+#     diagR_x3.07       : 16 mm2 code with diagonal R x 3.07 (consistency check vs the swap)
+#     diagR_x4.00_IEC   : 16 mm2 code with diagonal R x 4.0 (IEC-like ratio)
+#   Settings: 1 kW snapshot, 11:30 and 12:00 of the real day; source 1.03 pu; equal
+#   allocation. Reports the correct DOE, the gap, and the realised voltage with
+#   Volt-Watt on: worst case (may export the full issued DOE) and sun-limited
+#   (cap = min(DOE, 5 kW x pv_shape)). Snapshot rows have no sun limit: pv_* columns
+#   are NaN and pv_n_over_253 = 0 there means "not applicable".
+# Inputs:   includes doe_robust.jl (for scale_R_all!; it includes doe_timeseries.jl ->
+#           doe_record_errors.jl -> doe_common.jl -> load_lv3.jl);
+#           data/profiles/TeamNando_OE1_LoadShapes.txt
+# Outputs:  results/doe_ratio.csv (9 rows); prints a table
+# How to run (from the repo folder, in `julia +1.11 --project=bmopf`, fresh session):
+#   using Logging; disable_logging(Logging.Warn)
+#   include("scripts/bmopf/doe_ratio.jl")   then   run_ratio()
+# Used for: REPRODUCE.md step 14 and section 6 item 2 (ratio 4.0 at 12:00: correct
+#           1.624 kW, gap 2.628 kW, +161.8 %)
+# Credits:  CSIRO LV3 data and line codes (CC BY-NC-SA 4.0); IEC 60228 conductor
+#           resistances; Team-Nando OE1-Ideal load profiles (BSD-3); BMOPFTools.jl and
+#           PowerOptLab.jl by Frederik Geth; Ipopt
+# =============================================================================
 
 include(joinpath(pwd(), "scripts", "bmopf", "doe_robust.jl"))
 

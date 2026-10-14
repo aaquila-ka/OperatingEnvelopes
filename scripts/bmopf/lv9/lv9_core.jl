@@ -1,25 +1,36 @@
-# scripts/bmopf/lv9/lv9_core.jl
+# =============================================================================
+# lv9_core.jl: main LV9 record-error experiments (by segment kind, one at a time, sharing rules)
 #
-# STEP f4: the main experiments on the second feeder (CSIRO LV9, 123 customers).
-# On LV9 the 16 mm2 line code is used for three different kinds of segment (found by tracing
-# the radial tree from the transformer LV bus):
-#   drops    : the 123 segments that end at a customer bus (the customer's own service cable)
-#   upstream : segments with this line code that carry several customers' power (shared mains)
-#   stubs    : dead-end segments with no customer behind them (carry no current)
-# The independent audit found 12 upstream segments (l_72 l_1557 l_1752 l_2373 l_2525 l_2783
-# l_2897 l_3156 l_3443 l_3542 l_3635 l_4010); the tree trace below must reproduce that.
-# Records always say 16 mm2. Cases on the TRUE street: drops really 4 mm2 / upstream really
-# 4 mm2 / all 179 really 4 mm2. Equal allocation unless stated. Realised reading as on LV3
-# (everyone may export up to the issued DOE; Volt-VAr, Volt-Watt, 5 kVA kept; no V limit).
-#
-# RUN (fresh Julia, from C:\thesis\OperatingEnvelopes, julia +1.11 --project=bmopf)
-#   julia> using Logging; disable_logging(Logging.Warn)
-#   julia> include("scripts/bmopf/lv9/lv9_core.jl")
-#   julia> run_lv9_sweep()            # source sweep x {drops, upstream, all}      (~10 min)
-#   julia> run_lv9_single(1.00)       # each of the 123 drops alone, one at a time  (~30 min)
-#   julia> run_lv9_fairness(1.00)     # equal vs proportional, worst drop and upstream
-#   julia> run_lv9_upstream(0.94)     # each of the 12 shared 16 mm2 segments alone (~3 min)
-# OUTPUT results/lv9/lv9_sweep.csv, lv9_single_drops.csv, lv9_fairness.csv, lv9_segments.csv
+# What it does (plain English): on LV9 the 16 mm2 line code is used for three kinds of
+#   segment, found by tracing the radial tree from the transformer LV bus (b342):
+#     drops    : the 123 segments that end at a customer bus (the customer's own service cable)
+#     upstream : the 12 segments that do not end at a customer bus but have customers behind
+#                them (shared mains; 11 carry 2-43 customers, l_3156 carries 1). A separate
+#                check found the same 12 (l_72 l_1557 l_1752 l_2373 l_2525 l_2783 l_2897
+#                l_3156 l_3443 l_3542 l_3635 l_4010); the script warns if the trace differs.
+#     stubs    : 44 dead-end segments with no customer behind them (carry no current)
+#   Records always say 16 mm2. Cases on the TRUE street: drops / upstream / all 179 really
+#   4 mm2. Equal allocation unless stated. Gap = DOE from records minus correct DOE.
+#   Realised reading as on LV3 (everyone may export up to the issued DOE; Volt-VAr,
+#   Volt-Watt, 5 kVA kept; no voltage limit).
+# Inputs:   data/networks/LV9_258bus_withPV/; includes lv9_common.jl.
+# Outputs:  results/lv9/lv9_sweep.csv and lv9_segments.csv (run_lv9_sweep),
+#           lv9_single_drops_<pu>.csv (run_lv9_single), lv9_single_upstream_<pu>.csv
+#           (run_lv9_upstream), lv9_fairness.csv (run_lv9_fairness); tables printed.
+# How to run (from the repo folder, in `julia +1.11 --project=bmopf`):
+#   using Logging; disable_logging(Logging.Warn)
+#   include("scripts/bmopf/lv9/lv9_core.jl")   then
+#   run_lv9_sweep()           # 0.94 / 0.97 / 1.00 pu x {drops, upstream, all}   (~10 min)
+#   run_lv9_upstream(0.94)    # each of the 12 shared segments alone              (~3 min)
+#   run_lv9_single(0.94)      # each of the 123 drops alone                       (~30 min)
+#   run_lv9_fairness(0.94)    # equal vs proportional, longest drop and upstream_12
+#   (the functions default to 1.00 pu; the thesis results use 0.94 pu as above)
+# Used for: REPRODUCE.md step 21 (section 4 rows "LV9 shared vs drops").
+# Credits:  CSIRO LV9 feeder data ("Realistic Australian MV feeder with associated LV
+#           feeders" v1, doi 10.25919/ghnz-bk28, CC BY-NC-SA 4.0; copy shipped with
+#           BMOPFTools b7aa9a1, test/data/LV/LV9_258bus); BMOPFTools.jl (b7aa9a1) and
+#           PowerOptLab.jl (953e45c) by Frederik Geth; JuMP and Ipopt
+# =============================================================================
 
 include(joinpath(pwd(), "scripts", "bmopf", "lv9", "lv9_common.jl"))
 

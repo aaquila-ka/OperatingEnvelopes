@@ -1,15 +1,26 @@
-# scripts/bmopf/opendss_check_caseA.jl
+# =============================================================================
+# opendss_check_caseA.jl: independent OpenDSS check of the Case A bound-point voltage
 #
-# Independent check of CASE A in OpenDSS.
-#   True street: 22 service segments are 4 mm2 (uglv_4cu) instead of 16 mm2.
-#   Source 1.03 pu, original CSIRO loads.
-#   Every PV exports the over-promised 4.529 kW (the DOE issued from wrong records).
-#   Volt-Watt switched off (flat curve); Volt-VAr unchanged in var (kvarMax = 5);
-#   inverter size relaxed (kVA = 100) so P is not cut  -> same setup as the BMOPF counterfactual.
-# Also runs 0 kW export in both tools as a check that the cable swap is applied identically.
-# Note: OpenDSS InvControl senses PHASE-TO-GROUND voltage, BMOPF uses PHASE-TO-NEUTRAL,
-#       so Volt-VAr Q differs slightly between tools (documented 13 Oct).
-# RUN    julia> include("scripts/bmopf/opendss_check_caseA.jl")
+# What it does (plain English):
+#   True street: the 22 service segments are 4 mm2 (uglv_4cu) instead of 16 mm2. Source
+#   1.03 pu, original CSIRO loads (1 kW each). Every PV exports the over-promised 4.529 kW
+#   (the DOE issued from the wrong records). Volt-Watt switched off (flat curve); Volt-VAr
+#   unchanged in var (kvarMax = 5); inverter size relaxed (kVA = 100) so P is not cut ->
+#   same setup as the BMOPF bound-point counterfactual. Also runs 0 kW export in both tools as
+#   a check that the cable swap is applied identically. Prints the highest customer
+#   phase-to-neutral voltage from both tools and their difference.
+#   Note: OpenDSS InvControl senses PHASE-TO-GROUND voltage, BMOPF uses PHASE-TO-NEUTRAL, so
+#   Volt-VAr Q differs slightly between the tools.
+#
+# Inputs:   data/networks/LV3_55bus_withPV/Master.dss (OpenDSS) and the same network via
+#           doe_common.jl -> load_lv3.jl (BMOPFTools).
+# Outputs:  printed only (no file).
+# How to run (from the repo folder, in `julia +1.11 --project=bmopf`):
+#   include("scripts/bmopf/opendss_check_caseA.jl")          (runs run_check() on include)
+# Used for: REPRODUCE.md step 6 (section 4 row "Case A": bound-point 255.12 V).
+# Credits:  CSIRO LV3 data (CC BY-NC-SA 4.0); BMOPFTools.jl and PowerOptLab.jl by Frederik
+#           Geth; OpenDSS (EPRI) via OpenDSSDirect.jl; Ipopt.
+# =============================================================================
 
 include(joinpath(pwd(), "scripts", "bmopf", "doe_common.jl"))
 using OpenDSSDirect
@@ -26,6 +37,7 @@ function opendss_max_customer_v(kw, cust)
     root = pwd()
     master = abspath(joinpath(root, "data", "networks", "LV3_55bus_withPV", "Master.dss"))
     try
+        # solve twice: in this setup the first solve after clear+redirect left zero voltages
         for _ in 1:2                                    # warm-up bug: solve twice
             odcmd("clear")
             odcmd("redirect \"$master\"")

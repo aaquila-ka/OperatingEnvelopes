@@ -1,18 +1,28 @@
-# scripts/bmopf/lv9/prepare_lv9.jl
+# =============================================================================
+# prepare_lv9.jl: build the LV9 network folder used by every other LV9 script
 #
-# Build data/networks/LV9_258bus_withPV from the CSIRO LV9 feeder, with exactly the same
-# corrections as LV3_55bus_withPV:
-#   - loads reset to the CSIRO default 1 kW, 0.539743 kvar (pf 0.88); the copy shipped with
-#     BMOPFTools b7aa9a1 has 2 kW / 0.95 pf placeholders added in July 2026 (see its Loads.dss)
-#   - one 5 kVA / 5 kW PV per customer, phase-to-neutral (.x.4), AS/NZS 4777.2 Australia A
-#     Volt-VAr / Volt-Watt via one InvControl (same curves and tolerances as LV3)
-#   - transformer LV star point on the neutral (wdg=2 bus=...1.2.3.4)
-#   - source at sourcebus, 1.00 pu, with a tiny metering line to the MV bus (as LV3)
-# Source data: CSIRO "Realistic Australian MV feeder with associated LV feeders" v1,
-# doi 10.25919/ghnz-bk28 (CC BY-NC-SA 4.0), copy in BMOPFTools b7aa9a1 test/data/LV/LV9_258bus.
-#
-# RUN (from C:\thesis\OperatingEnvelopes, julia +1.11 --project=bmopf)
-#   julia> include("scripts/bmopf/lv9/prepare_lv9.jl")
+# What it does (plain English): copies the CSIRO LV9 feeder (258 buses, 123 single-phase
+#   customers) from the BMOPFTools test data and applies the same corrections as the LV3
+#   network: every house load reset to the CSIRO default 1 kW / 0.539743 kvar (pf 0.88; the
+#   BMOPFTools copy has 2 kW / 0.95 pf placeholders, see its Loads.dss), one 5 kVA / 5 kW
+#   rooftop PV per customer connected phase-to-neutral (.x.4) with AS/NZS 4777.2 Australia A
+#   Volt-VAr / Volt-Watt (one InvControl, same curves and tolerances as LV3), the transformer
+#   LV star point on the neutral (wdg=2 bus=...1.2.3.4), and the source at sourcebus at
+#   1.00 pu with a tiny metering line to the MV bus (as LV3).
+# Inputs:   <BMOPFTools package>/test/data/LV/LV9_258bus/ (lines, Linecodes, Switches,
+#           Groundings, Transformers, Loads .dss). Includes no other thesis script.
+# Outputs:  data/networks/LV9_258bus_withPV/ (Master, lines, Linecodes, Switches, Groundings,
+#           Transformers, Loads, PVSystems .dss); prints a short summary incl. the number of
+#           16 mm2 service segments (179).
+# How to run (from the repo folder, in `julia +1.11 --project=bmopf`):
+#   include("scripts/bmopf/lv9/prepare_lv9.jl")      (runs prepare_lv9() automatically)
+# Used for: REPRODUCE.md step 19 (needed by steps 20-30); known issue 15 (the BMOPFTools
+#           copy has two closed switches commented out, so LV9 is run radial).
+# Credits:  CSIRO LV9 feeder data ("Realistic Australian MV feeder with associated LV
+#           feeders" v1, doi 10.25919/ghnz-bk28, CC BY-NC-SA 4.0; copy shipped with
+#           BMOPFTools b7aa9a1, test/data/LV/LV9_258bus); BMOPFTools.jl (b7aa9a1) and
+#           PowerOptLab.jl (953e45c) by Frederik Geth; JuMP and Ipopt
+# =============================================================================
 
 using BMOPFTools
 

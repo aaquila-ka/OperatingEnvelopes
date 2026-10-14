@@ -1,27 +1,40 @@
-# scripts/bmopf/doe_timeseries.jl
+# =============================================================================
+# doe_timeseries.jl: one full day (48 half-hours) of clean vs Case A DOEs with real house usage
 #
-# STEP 3 (v2, after independent review): one full day, 48 half-hour steps.
-# House usage: 12 of the 99 real anonymised Victorian smart-meter profiles (P and Q, 5-min)
-# from Team-Nando OE1-Ideal (BSD-3, commit 96abbab), averaged to 30 min.
-# The 12 profiles are picked with a fixed seed and the mapping is written to a CSV.
-# At every step:
-#   clean   : records = truth = catalogue (all 16 mm2)        -> answer key DOE
-#   Case A  : truth all 22 service cables 4 mm2, records 16   -> issued = clean DOE
-#   (Case B is the mirror of Case A: lost % = 1/(1 + over-promise) - 1; reported for completeness)
-# What the issued DOE does on the Case A street, read three ways:
-#   boundpoint_noVW : everyone exports exactly the DOE, Volt-Watt off (old, worst case)
-#   worst_VW        : everyone MAY export up to the DOE, inverters keep Volt-Watt/Volt-VAr/5 kVA
-#   pv_VW           : as worst_VW but nobody can export more than the sun gives:
-#                     cap = min(DOE, 5 kW x pv_shape)  -> the realistic number; 0 at night
-# Source fixed at `pu` (default 1.03), 207-253 V PN at customers, equal allocation.
+# What it does (plain English):
+#   House usage: 12 of the 99 anonymised Victorian smart-meter profiles (P and Q, 5-min) from
+#   Team-Nando OE1-Ideal (commit 96abbab), averaged to 30 min; the profile day is day index 350,
+#   the lowest-demand day in the dataset. The 12 profiles are picked with a fixed seed and the
+#   mapping is written to a CSV. At every half-hour step (step 1 = 00:00, step 25 = 12:00):
+#     clean   : records = truth = catalogue (all 16 mm2)        -> answer-key DOE
+#     Case A  : truth all 22 service cables 4 mm2, records 16   -> issued = clean DOE
+#               gap = issued - correct; over-promise % = gap / correct x 100
+#     (Case B is the mirror of Case A: lost % = 1/(1 + over-promise) - 1; for completeness)
+#   What the issued DOE does on the Case A street, read three ways:
+#     boundpoint_noVW : everyone exports exactly the DOE, Volt-Watt off (old, worst case)
+#     worst_VW        : everyone MAY export up to the DOE, inverters keep Volt-Watt/Volt-VAr/5 kVA
+#     pv_VW           : as worst_VW but nobody can export more than the sun gives:
+#                       cap = min(DOE, 5 kW x pv_shape) -> the realistic number; NaN at night
+#                       (no export; n_over 0 there, while a failed solve gives n_over -1)
+#   Source fixed at pu (default 1.03), 207-253 V phase-to-neutral at customers, equal sharing.
+#   Also defines the shared helpers used by many later scripts (read_profiles, profile_map,
+#   set_loads!, all_small!, ts_doe, ts_step, tlabel) and run_record_errors_at().
+#   A half-hour whose solve throws an error is printed as ERROR and left out of the CSV.
 #
-# RUN (fresh Julia, from C:\thesis\OperatingEnvelopes, julia +1.11 --project=bmopf)
-#   julia> using Logging; disable_logging(Logging.Warn)
-#   julia> include("scripts/bmopf/doe_timeseries.jl")
-#   julia> run_timeseries()                                   # full day at 1.03 pu
-#   julia> run_record_errors_at(25; n_draws = 20)             # record errors at 12:00 loads
-# OUTPUT results/doe_timeseries.csv, results/timeseries_profile_map.csv,
-#        results/doe_record_errors_1200.csv
+# Inputs:   data/profiles/TeamNando_OE1_LoadShapes.txt, LV3 network (via load_lv3.jl).
+#           Includes doe_record_errors.jl (-> doe_common.jl -> load_lv3.jl).
+# Outputs:  results/doe_timeseries.csv (48 rows), results/timeseries_profile_map.csv;
+#           run_record_errors_at(25) writes results/doe_record_errors_1200.csv.
+# How to run (from the repo folder, in `julia +1.11 --project=bmopf`):
+#   using Logging; disable_logging(Logging.Warn)
+#   include("scripts/bmopf/doe_timeseries.jl")   then   run_timeseries()
+#   (same session)   run_record_errors_at(25; n_draws = 20)     # record errors at 12:00 loads
+# Used for: REPRODUCE.md steps 9 and 10 (section 4 rows "Full day, 1.03 pu" and "Record
+#           errors, 12:00 loads"); DATA_CARD.md files 5, 7 and 8.
+# Credits:  CSIRO LV3 data (CC BY-NC-SA 4.0); BMOPFTools.jl and PowerOptLab.jl by Frederik
+#           Geth; Ipopt; Team-Nando OE1-Ideal / MV-LV-Networks profiles (BSD-3, AusNet
+#           smart-meter data).
+# =============================================================================
 
 include(joinpath(pwd(), "scripts", "bmopf", "doe_record_errors.jl"))
 

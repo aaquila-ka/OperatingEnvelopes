@@ -1,27 +1,37 @@
-# scripts/bmopf/doe_record_errors.jl
+# =============================================================================
+# doe_record_errors.jl: realistic cable-record errors, many seeded random draws
 #
-# STEP 2 (v2, after independent review): realistic cable-record errors, many seeded draws.
-#
-# The RECORDS always show the catalogue: every service cable = 16 mm2 Cu.
-# The TRUE street differs from the records in one of two ways:
-#   scatter   : each of the 22 service segments gets its OWN resistance factor
-#               f = 1 + sigma * randn  (diagonal R only), f >= 0.5; sigma = 0.05, 0.10, 0.20
-#   wrongtype : m randomly chosen service segments are really 4 mm2 Cu; m = 2, 5, 11 of 22
-# Issued DOE  = DOE on the records (same for every draw)
-# Correct DOE = DOE on that draw's true street (the answer key for that draw)
-# Two ways of reading what the issued DOE does on the true street:
-#   bound-point (old): every customer exports exactly the issued DOE, Volt-Watt switched off
-#                      (counterfactual if the 5 kVA rating cannot deliver it)
-#   realised    (new): every customer MAY export up to the cap; inverters keep Volt-VAr,
-#                      Volt-Watt and the 5 kVA rating; no voltage limit is imposed.
-#                      -> realised max voltage, customers above 253 V, total curtailment
-# v2 also saves all 22 scatter factors per draw, the gap in kW, and allows another
-# operating point (other loads / source voltage) through `prep!` and `pu`.
-#
-# RUN (fresh Julia, from C:\thesis\OperatingEnvelopes, julia +1.11 --project=bmopf)
-#   julia> include("scripts/bmopf/doe_record_errors.jl")
-#   julia> run_record_errors(n_draws = 20)                 # 1 kW snapshot, 1.03 pu
-# OUTPUT results/doe_record_errors.csv
+# What it does (plain English):
+#   The RECORDS always show the catalogue: every service cable = 16 mm2 Cu.
+#   The TRUE street differs from the records in one of two ways:
+#     scatter   : each of the 22 service segments gets its OWN resistance factor
+#                 f = 1 + sigma * randn  (diagonal R only), f >= 0.5; sigma = 0.05, 0.10, 0.20
+#     wrongtype : m randomly chosen service segments are really 4 mm2 Cu; m = 2, 5, 11 of 22
+#                 (chosen from all 22, including the 10 dead-end stubs with no customer,
+#                 which carry no current; that is why some 2-cable draws give 0 %)
+#   Issued DOE  = DOE on the records (same for every draw)
+#   Correct DOE = DOE on that draw's true street (the answer key for that draw)
+#   gap_kW = issued - correct; overpromise_pct = (issued / correct - 1) x 100
+#   Two ways of reading what the issued DOE does on the true street:
+#     bound-point (old): every customer exports exactly the issued DOE, Volt-Watt switched off
+#                        (counterfactual if the 5 kVA rating cannot deliver it)
+#     realised    (new): every customer MAY export up to the cap; inverters keep Volt-VAr,
+#                        Volt-Watt and the 5 kVA rating; no voltage limit is imposed.
+#                        -> realised max voltage, customers above 253.005 V, total curtailment
+#   Every draw has its own random generator: seed = 20261013 + 100000 x scenario number
+#   (1 scatter, 2 wrongtype) + 1000 x level number (1-3) + draw number, so a draw does not
+#   depend on n_draws. All 22 scatter factors per draw are saved; another operating point
+#   (other loads / source voltage) can be passed through `prep!` and `pu`.
+# Inputs:   includes doe_common.jl (-> load_lv3.jl and the LV3 .dss files)
+# Outputs:  results/doe_record_errors.csv (or the name given in `out`); prints a table
+# How to run (from the repo folder, in `julia +1.11 --project=bmopf`, fresh session):
+#   include("scripts/bmopf/doe_record_errors.jl")   then   run_record_errors(n_draws = 20)
+#   (the default n_draws = 2 is a quick test and would overwrite the 120-row file with 12 rows)
+# Used for: REPRODUCE.md step 7 (1 kW snapshot, 1.03 pu); step 10 reuses it at the
+#           12:00 loads through run_record_errors_at(25; n_draws = 20) in doe_timeseries.jl
+# Credits:  CSIRO LV3 data and line codes (CC BY-NC-SA 4.0); BMOPFTools.jl and
+#           PowerOptLab.jl by Frederik Geth; Ipopt; Julia MersenneTwister random numbers
+# =============================================================================
 
 include(joinpath(pwd(), "scripts", "bmopf", "doe_common.jl"))
 using Random

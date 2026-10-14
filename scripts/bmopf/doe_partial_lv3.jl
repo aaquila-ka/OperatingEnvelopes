@@ -1,21 +1,28 @@
-# scripts/bmopf/doe_partial_lv3.jl
+# =============================================================================
+# doe_partial_lv3.jl: LV3 safety checks: partial export by phase, and cable currents
 #
-# Checks flagged by the technical audit (LV3):
-# (1) PARTIAL EXPORT. The DOE is computed for the "bound point" (every customer exports its full
-#     limit at once). Is it still safe when some customers do NOT export? With single-phase
-#     customers on a four-wire feeder, switching one phase off shifts the neutral and can lift
-#     the other phases. We apply the clean equal DOE on the TRUE (correct) network for the 7
-#     phase patterns (each subset of phases exporting) and read the realised voltages
-#     (Volt-VAr, Volt-Watt, 5 kVA kept; no voltage limit imposed).
-# (2) CABLE CURRENTS. Highest phase and neutral current in each cable type at the clean DOE
-#     (bound point), to compare with the cable ratings (no current limits are modelled).
-# Settings: 1 kW snapshot and 12:00 loads, 1.03 pu.
+# What it does (plain English):
+#   (1) PARTIAL EXPORT. The DOE is computed for the "bound point" (every customer exports its
+#       full limit at once). Is it still safe when some customers do NOT export? With
+#       single-phase customers on a four-wire feeder, switching one phase off shifts the
+#       neutral and can lift the other phases. The clean equal DOE is applied on the TRUE
+#       (correct) network for the 7 phase patterns (each subset of phases exporting; customers
+#       on the other phases get limit 0) and the realised voltages are read (Volt-VAr,
+#       Volt-Watt, 5 kVA kept; no voltage limit imposed; fr_realised from doe_fairness.jl).
+#   (2) CABLE CURRENTS. Highest phase and neutral current in each cable type (line code) at the
+#       clean DOE (bound point), to compare with cable ratings (no current limits are modelled).
+#   Settings: 1 kW snapshot and 12:00 loads, 1.03 pu.
 #
-# RUN (fresh Julia, from C:\thesis\OperatingEnvelopes, julia +1.11 --project=bmopf)
-#   julia> using Logging; disable_logging(Logging.Warn)
-#   julia> include("scripts/bmopf/doe_partial_lv3.jl")
-#   julia> run_partial_lv3()
-# OUTPUT results/doe_partial_lv3.csv, results/cable_currents_lv3.csv
+# Inputs:   LV3 network and house profiles. Includes doe_fairness.jl (-> doe_timeseries.jl ...).
+# Outputs:  results/doe_partial_lv3.csv (14 rows), results/cable_currents_lv3.csv (6 rows).
+#           curtail_kW there is about 0.001 kW low per silent customer (see doe_fairness.jl).
+# How to run (from the repo folder, in `julia +1.11 --project=bmopf`):
+#   using Logging; disable_logging(Logging.Warn)
+#   include("scripts/bmopf/doe_partial_lv3.jl")   then   run_partial_lv3()
+# Used for: REPRODUCE.md step 17 (section 4 row "LV3 partial export"); DATA_CARD.md files 16-17.
+# Credits:  CSIRO LV3 data (CC BY-NC-SA 4.0); BMOPFTools.jl and PowerOptLab.jl by Frederik
+#           Geth; Ipopt; Team-Nando OE1-Ideal profiles (BSD-3, AusNet smart-meter data).
+# =============================================================================
 
 include(joinpath(pwd(), "scripts", "bmopf", "doe_fairness.jl"))
 
