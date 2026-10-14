@@ -12,4 +12,5 @@ data/raw/
 
 # OS and editor
 .DS_Store
-Thumbs.dbdata/profiles/pool/*.npy
+Thumbs.db
+data/profiles/pool/*.npy
