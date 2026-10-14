@@ -21,7 +21,7 @@ W = 3.0  # inches, one column
 e = pd.read_csv(os.path.join(R, "doe_record_errors_1200.csv"))
 s = pd.read_csv(os.path.join(R, "doe_source_sweep.csv"))
 all22 = float(s[(s.setting == "day_1200") & (abs(s.source_pu - 1.03) < 1e-6)].A_gap_kW.iloc[0])
-fig, a = plt.subplots(figsize=(W, 1.6))
+fig, a = plt.subplots(figsize=(W, 1.45))
 groups = [("scatter", 0.05, "5"), ("scatter", 0.10, "10"), ("scatter", 0.20, "20"),
           ("wrongtype", 2.0, "2"), ("wrongtype", 5.0, "5"), ("wrongtype", 11.0, "11")]
 rng = np.random.default_rng(1)
@@ -37,7 +37,7 @@ a.text(1, -0.27, "scatter in R (%)", ha="center", va="top", fontsize=7.5, transf
 a.text(4.5, -0.27, "segments 4 mm²", ha="center", va="top", fontsize=7.5, transform=a.get_xaxis_transform())
 a.set_ylim(-0.4, 2.6)
 a.set_ylabel("gap (kW)")
-fig.subplots_adjust(left=0.17, right=0.98, top=0.96, bottom=0.33)
+fig.subplots_adjust(left=0.17, right=0.98, top=0.96, bottom=0.36)
 fig.savefig("fig_paper_1.png", dpi=400)
 
 # ---- Fig. 2: one measured day
@@ -45,7 +45,7 @@ t = pd.read_csv(os.path.join(R, "doe_timeseries.csv"))
 day = t[t.daylight == "yes"]
 hrs = np.array([int(x[:2]) + int(x[3:]) / 60 for x in day.time])
 v = day.A_pv_V_VW.values
-fig, a = plt.subplots(figsize=(W, 1.4))
+fig, a = plt.subplots(figsize=(W, 1.25))
 a.axhline(253, color=RED, lw=0.8, ls="--")
 a.plot(hrs, v, "-o", color=ORANGE, ms=2.4, mec="black", mew=0.3, lw=1)
 a.fill_between(hrs, 253, v, where=v > 253, color=ORANGE, alpha=0.25, lw=0)
@@ -56,7 +56,7 @@ a.text(18.9, 254.45, f"{over} half-hours\nabove 253 V", fontsize=7.5, ha="right"
 a.set_xlim(6, 19); a.set_xticks([6, 8, 10, 12, 14, 16, 18])
 a.set_ylim(250.8, 255.6)
 a.set_xlabel("hour of day")
-a.set_ylabel("highest voltage (V)")
-fig.subplots_adjust(left=0.17, right=0.98, top=0.96, bottom=0.3)
+a.set_ylabel("highest V (V)")
+fig.subplots_adjust(left=0.18, right=0.98, top=0.95, bottom=0.33)
 fig.savefig("fig_paper_2.png", dpi=400)
 print("all22", round(all22, 3), "over", over, "peak", round(np.nanmax(v), 2))
