@@ -1,0 +1,9 @@
+source_pu,i16_rating_A,clean_kW_no_thermal,clean_kW_thermal,clean_binding,clean_max_16mm2_current_A,clean_max_current_segment,case,correct_kW,correct_binding,gap_kW,realised_V,n_customers_over_253,realised_max_shared_current_A,realised_max_current_segment
+0.940,110.0,3.586565,2.292715,thermal,110.000,l_2373,drops_123,2.268450,thermal,0.024265,245.5019,0,112.158,l_2373
+0.940,110.0,3.586565,2.292715,thermal,110.000,l_2373,upstream_12,2.128212,voltage,0.164503,255.0428,8,174.619,l_2373
+0.940,81.0,3.586565,1.966021,thermal,81.000,l_2373,drops_123,1.947566,thermal,0.018455,243.0609,0,82.686,l_2373
+0.940,81.0,3.586565,1.966021,thermal,81.000,l_2373,upstream_12,2.128212,voltage,-0.162191,250.8995,0,137.104,l_2373
+1.000,110.0,1.653659,1.035277,thermal,110.000,l_2373,drops_123,1.038285,thermal,-0.003008,250.4394,0,109.799,l_2373
+1.000,110.0,1.653659,1.035277,thermal,110.000,l_2373,upstream_12,1.260157,voltage,-0.224880,250.5438,0,97.939,l_2373
+1.000,81.0,1.653659,0.509463,thermal,81.000,l_2373,drops_123,0.540297,thermal,-0.030834,249.2015,0,79.651,l_2373
+1.000,81.0,1.653659,0.509463,thermal,81.000,l_2373,upstream_12,1.260157,voltage,-0.750695,249.5061,0,46.866,l_3443
