@@ -1,0 +1,4 @@
+source_pu,truth,bound_point_kW,phase_secure_kW,dropout_secure_kW_issued,correct_dropout_secure_kW,gap_kW,gap_pct,issued_on_true_worst_V,worst_case,cases_over_253_of_130,correct_final_worst_V,correct_final_n_fail
+0.970,clean,2.672470,1.902569,1.875814,1.875814,0,0,253.0049,only_bc_export,0,253.0049,0
+0.970,upstream_12,2.672470,1.902569,1.875814,1.445329,0.430485,29.785,258.7814,only_bc_export,126,253.0049,0
+0.970,l_2373,2.672470,1.902569,1.875814,1.438002,0.437812,30.446,258.8712,only_bc_export,112,252.9799,0
