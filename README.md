@@ -77,6 +77,10 @@ If something is unclear or looks wrong, please open an issue on GitHub. Correcti
 - Team-Nando profiles in `data/profiles/`: BSD 3-Clause, licence files kept in that folder.
 - Third-party tools keep their own licences (see ACKNOWLEDGEMENTS.md).
 
+## Acknowledgements
+
+This work uses the CSIRO street models (Geth, Heidari, Clark, Lucas and Nimalsiri, doi 10.25919/ghnz-bk28), Frederik Geth's BMOPFTools.jl and PowerOptLab.jl, OpenDSS (EPRI), JuMP and Ipopt, and Team-Nando's (University of Melbourne) house-usage profiles from AusNet Services smart meters. Thank you to my supervisors Archie Chapman and Frederik Geth for their guidance. Full credits, references and licences: [ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md).
+
 ## How to cite
 
 See [CITATION.cff](CITATION.cff). Please also cite the CSIRO dataset and the tools listed in ACKNOWLEDGEMENTS.md.
