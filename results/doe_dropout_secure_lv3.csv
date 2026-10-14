@@ -1,0 +1,3 @@
+feeder,setting,source_pu,bound_point_kW,phase_secure_kW,dropout_secure_kW,change_vs_bound_pct,change_vs_phase_secure_pct,n_cases_checked,worst_V_VW,worst_case,n_fail
+LV3,snapshot_1kW,1.030,4.529316,4.312582,4.203082,-7.203,-2.539,85,253.0043,ld1291_load_b+ld1668_load_a+ld1895_load_b+ld2050_load_a+ld2186_load_b+ld248_load_b+ld24_load_a+ld868_load_a,0
+LV3,day_1200,1.030,4.252542,3.841408,3.664343,-13.832,-4.609,85,253.0049,ld1668_load_a+ld2050_load_a+ld24_load_a+ld868_load_a,0
