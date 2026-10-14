@@ -233,3 +233,20 @@ inverter-limited at 1.03 pu; Geth's australian_pv uses 6 kVA with 5 kW, which wo
 - 7 % loss gap between BMOPFTools and OpenDSS; second feeder; more days and profile sets.
 
 - 13 Oct (late): 7 % loss gap traced. The 8 closed switches are 1 mOhm in OpenDSS but ideal in BMOPFTools (28.2 W), and BMOPF p_loss excludes the earthing shunts (0.5 W). BMOPF 359.0 + 0.5 + 28.2 = 387.6 W vs OpenDSS 386.9 W (0.2 %). Loss breakdown block added to validate_network_pinned.jl after solve_pf.
+
+## 14 Oct 2026: deep review, LV9 second feeder, safety checks
+
+**Deep review (4 independent reviewers: technical, contribution, dataset, writing)**: LV3 pipeline confirmed; LV9 clean DOE confirmed in OpenDSS (1.6537 vs 1.654 kW). Flagged: LV9 16 mm2 code also used for shared mains; bound-point DOE vs partial export; no thermal limits; wording (kW and V first, "breaks its 253 V promise", screening rule not law); title vs scope (AI not trained); dataset not ML-ready yet (spec written).
+
+**Cable data check**: across all 34 CSIRO LV feeders the only service cable used is 16 mm2 Cu; 4 mm2 appears only in the line-code library. 16 mm2 code ~1.44 ohm/km (looks like ~90 C), 4 mm2 code ~4.52 ohm/km (close to IEC 20 C), hence ratio 3.07 vs IEC 4.0.
+
+**LV9 (123 customers)**: prepared like LV3; BMOPF vs OpenDSS 0.0007 V with ideal switches (0.54 V from the 1 mOhm switch convention). 16 mm2 segments: 123 drops, 12 shared, 44 stubs.
+- Shared cables carry the risk: 12 shared wrong at 0.94 pu: gap 1.46 kW, 259 V, 64 customers over; l_2373 (43 customers) alone 1.33 kW.
+- Drops: 6 of 123 matter; harmful when length x ~0.06 V/m > headroom.
+- Proportional: +19 % export but each customer at its own limit, so its own record matters.
+- Partial export: up to 258.4 V when one phase does not export. Phase-secure DOE: -32 % (LV3: -5 to -10 %).
+- Thermal: shared 16 mm2 l_2373 carries 217 A at the voltage-only DOE vs 110 A rating; thermally limited DOE 2.29 kW (0.94 pu). 4 mm2 rating still needed (AS/NZS 3008.1.1).
+
+**LV3 safety checks**: partial export worst 253.30 V; currents far below ratings (16 mm2 18.6 A).
+
+**Open**: 4 mm2 and Al ratings; email supervisors (phase security method, ratings, title); paper/poster from writing plan; dataset generator.

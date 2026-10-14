@@ -37,7 +37,7 @@ House usage for the day runs: `data/profiles/TeamNando_OE1_LoadShapes.txt` (Team
 
 ## 3. Run order
 
-Start Julia from C:\thesis\OperatingEnvelopes with `julia +1.11 --project=bmopf`. For steps 7-16, first run `using Logging; disable_logging(Logging.Warn)` to hide the repeated import warnings, and use a fresh Julia session for each script.
+Start Julia from C:\thesis\OperatingEnvelopes with `julia +1.11 --project=bmopf`. For steps 7-24, first run `using Logging; disable_logging(Logging.Warn)` to hide the repeated import warnings, and use a fresh Julia session for each script.
 
 | # | Command | What it does | Output |
 |---|---|---|---|
@@ -57,6 +57,14 @@ Start Julia from C:\thesis\OperatingEnvelopes with `julia +1.11 --project=bmopf`
 | 14 | `include("scripts/bmopf/doe_ratio.jl")` then `run_ratio()` | cable ratio 3.07 (dataset) vs 4.0 (IEC) | results/doe_ratio.csv |
 | 15 | `include("scripts/bmopf/doe_clearsky.jl")` then `run_clearsky()` | clear-sky day (assumed peak 0.85) | results/doe_clearsky.csv |
 | 16 | `include("scripts/bmopf/doe_verify_proportional.jl")` then `run_verify_proportional()` | checking records under proportional vs equal sharing | results/doe_verify_proportional.csv |
+| 17 | `include("scripts/bmopf/doe_partial_lv3.jl")` then `run_partial_lv3()` | partial export (7 phase patterns) and cable currents | results/doe_partial_lv3.csv, results/cable_currents_lv3.csv |
+| 18 | `include("scripts/bmopf/doe_phase_secure.jl")` then `run_phase_secure_lv3()` | phase-secure equal DOE (needs phase_secure_core.jl) | results/doe_phase_secure_lv3.csv |
+| 19 | `include("scripts/bmopf/lv9/prepare_lv9.jl")` | builds data/networks/LV9_258bus_withPV from the CSIRO LV9 copy in BMOPFTools b7aa9a1 | network files |
+| 20 | `include("scripts/bmopf/lv9/lv9_check.jl")` then `run_lv9_check(1.00)` and `run_lv9_check(1.00; ideal_switches = true)` | BMOPF vs OpenDSS on LV9 | results/lv9/analyze_lv9.txt, lv9_check*.csv |
+| 21 | `include("scripts/bmopf/lv9/lv9_core.jl")` then `run_lv9_sweep()`, `run_lv9_upstream(0.94)`, `run_lv9_single(0.94)`, `run_lv9_fairness(0.94)` | LV9 record errors by segment kind, one at a time, sharing rules | results/lv9/lv9_sweep.csv, lv9_segments.csv, lv9_single_*.csv, lv9_fairness.csv |
+| 22 | `include("scripts/bmopf/lv9/lv9_partial.jl")` then `run_lv9_partial()` | LV9 partial export and cable currents | results/lv9/lv9_partial.csv, lv9_cable_currents.csv |
+| 23 | `include("scripts/bmopf/lv9/lv9_thermal.jl")` then `run_lv9_thermal()` | LV9 with cable current limits | results/lv9/lv9_thermal.csv |
+| 24 | `include("scripts/bmopf/lv9/lv9_phase_secure.jl")` then `run_phase_secure_lv9()` | LV9 phase-secure DOE (~6 min) | results/lv9/lv9_phase_secure.csv |
 
 The ~46 "from_dss: ... could not be represented" warnings at import are expected (OpenDSS fields like `units` that BMOPF does not need).
 
@@ -77,6 +85,10 @@ The ~46 "from_dss: ... could not be represented" warnings at import are expected
 | Cable ratio 4.0, 12:00 | correct 1.624 kW, gap 2.628 kW (+161.8 %), sun-limited 255.12 V (3.07: 1.959 kW, 254.29 V) |
 | Clear-sky day | 21 half-hours above 253 V (07:30-17:30), peak 255.22 V |
 | Checking under proportional, 12:00 | total share 64 % (none) -> 75 / 84 / 94 / 100 % after 3 / 6 / 9 / 11 checks (equal: 46 % until the last) |
+| LV3 partial export / phase-secure | worst 253.30 V; phase-secure DOE -4.8 % (snapshot), -9.7 % (12:00) |
+| LV9 clean DOE | 3.587 kW (0.94 pu), 1.654 kW (1.00 pu), voltage-limited; OpenDSS 0.0007 V with ideal switches |
+| LV9 shared vs drops (0.94 pu) | 12 shared wrong: gap 1.458 kW, 258.99 V; l_2373 alone 1.333 kW; drops wrong: 0.238 kW; 6 of 123 single drops matter |
+| LV9 thermal (110 A) / phase-secure | 2.293 kW (0.94 pu) / 2.445 kW (0.94 pu) |
 | Sharing rules, l_3432 wrong | equal: 12 of 12 limits change, 21.55 kW (snapshot); proportional: 1 of 12, 1.85 kW; realised 254.60 V at b828 b-n under every rule |
 
 ## 5. Main modelling choices
@@ -105,6 +117,12 @@ The ~46 "from_dss: ... could not be represented" warnings at import are expected
 12. The DOE is very slightly non-monotone in a single cable's resistance: a thicker cable lowers that customer's voltage, so its inverter absorbs less reactive power, which nudges its neighbours. Effect up to 0.02 kW (0.7 %); reproduced in OpenDSS; disappears with Volt-VAr off. So 'thinnest cable everywhere' is the worst case only to within about 0.02 kW.
 13. The size of the error is not monotone in source voltage: largest around 1.025-1.03 pu, smaller in kW at 1.035 pu where the clean DOE collapses.
 14. The measured day is partly cloudy (sun peak 3.6 kW per house); the clear-sky run uses an assumed peak of 0.85 x 5 kW and a symmetric half-sine shape.
+
+15. LV9 source data is the CSIRO LV9 copy shipped with BMOPFTools b7aa9a1 (loads reset to the CSIRO default). That copy has two closed switches commented out (Switch_3773_CLOSED, Switch_4284_CLOSED), so LV9 is run radial; to be checked against the DOI download.
+16. LV9 voltage comparison depends on the switch convention: with the dataset's 1 mOhm switches (OpenDSS) the LV9 equal DOE is about 0.10 kW higher than with ideal switches (BMOPF); voltages differ by up to 0.75 V.
+17. "LV9 1.00 pu ~ LV3 1.025 pu" means the same transformer no-load voltage only; LV9 is voltage-limited even at 0.92-0.94 pu.
+18. Current ratings are only applied to copper cables (16 mm2 110 A buried / 81 A duct, 120 mm2 345 A, Prysmian datasheet). Aluminium mains and the 4 mm2 cable have no rating yet, so the LV9 shared-cable thermal case is incomplete (negative gaps there are an artefact). AS/NZS 3008.1.1 to be consulted.
+19. All DOEs except doe_phase_secure / lv9_phase_secure are bound-point DOEs (everyone exports at once); they are not automatically safe when one or two phases do not export (LV3 +0.3 V, LV9 +5.4 V).
 
 ## 7. Where the history is
 

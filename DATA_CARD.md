@@ -179,6 +179,29 @@ Columns: setting, source_pu, order (opf_ranked / shortest_first), k_checked, che
 
 Meaning: under proportional sharing every checked record releases that customer's export at once (about 2-3 points per cable, in any order); under equal sharing checking pays off only at the end. Trade-off: under proportional the unchecked customer keeps a low limit (smallest limit about 1.9-2.1 kW at 12:00 until its cable is checked).
 
+## Files 16-18: LV3 safety checks (results/doe_partial_lv3.csv, results/cable_currents_lv3.csv, results/doe_phase_secure_lv3.csv)
+
+- Partial export (clean equal DOE on the correct network, 7 phase patterns, realised with Volt-VAr/Volt-Watt/5 kVA): worst 253.19 V (1 kW snapshot) and 253.30 V (12:00), up to 3 customers just above 253 V.
+- Cable currents at the clean DOE: 16 mm2 service cables at most 18.6 A, 240 mm2 Al mains 36.8 A, 400 mm2 Al 73.3 A; far below ratings (16 mm2 Cu 4-core XLPE: 110 A buried / 81 A in duct, Prysmian datasheet). Thermal limits do not bind on LV3.
+- Phase-secure equal DOE (highest equal limit safe for all 7 phase patterns, bisection with verify_operating_envelope): 4.313 kW vs 4.529 kW (-4.8 %, snapshot) and 3.841 vs 4.253 kW (-9.7 %, 12:00).
+
+## Second feeder: CSIRO LV9 (results/lv9/)
+
+LV9: 258 buses, 123 single-phase customers (41 per phase), 500 kVA, HV tap 1.000 (LV9 is about 2.5 % higher than LV3 at the same source pu). Prepared like LV3 (scripts/bmopf/lv9/prepare_lv9.jl). The 16 mm2 line code is used for 123 customer drops, 12 shared segments (carrying 2-43 customers) and 44 dead-end stubs.
+
+| File | Content | Key numbers |
+|---|---|---|
+| lv9_check.csv / lv9_check_idealsw.csv | BMOPF vs OpenDSS, same 123 inverter P/Q pinned, 774 LV phase-neutral voltages | 0.54 V mean (OpenDSS 1 mOhm switches); 0.0007 V with ideal switches in both tools |
+| lv9_segments.csv | kind (drop / upstream / stub), customers downstream, length of every 16 mm2 segment | |
+| lv9_sweep.csv | Case A by kind at 0.94 / 0.97 / 1.00 pu (equal, voltage only) | drops wrong: gap 0.24 / 0.17 / 0.03 kW, up to 254.6 V; 12 shared wrong: gap 1.46 / 0.87 / 0.39 kW, up to 259.2 V, up to 64 customers above 253 V |
+| lv9_single_upstream_0.94.csv | each shared segment alone | l_2373 (43 customers, 68.7 m): gap 1.33 kW, 257.9 V, 43 over; l_3443 (28): 0.88 kW |
+| lv9_single_drops_0.94.csv | each of the 123 drops alone, with length, distance, clean headroom | 6 of 123 change the DOE by > 0.01 kW (max 0.27 kW, 254.86 V, l_747); rule: harmful when length x ~0.06 V/m > headroom |
+| lv9_fairness.csv | equal vs proportional at 0.94 pu | proportional +19 % total (525 vs 441 kW) but exposes individual records (165 m drop: no effect under equal, 254.2 V under proportional) |
+| lv9_partial.csv | partial export, 7 phase patterns | up to 258.36 V (0.94 pu) / 257.74 V (1.00 pu), up to 28 customers over |
+| lv9_cable_currents.csv | highest current per segment kind at the clean DOE | shared 16 mm2 l_2373: 217 A (0.94 pu) / 153 A (1.00 pu) vs 110 A buried rating |
+| lv9_thermal.csv | DOE with current limits (16 mm2 110 or 81 A, 120 mm2 345 A) | clean DOE thermally limited by l_2373: 2.29 kW (0.94 pu, 110 A), 1.04 kW (1.00 pu, 110 A); drop errors then negligible; shared-cable case incomplete (no 4 mm2 rating) |
+| lv9_phase_secure.csv | phase-secure equal DOE | 2.445 vs 3.587 kW (-31.8 %, 0.94 pu); 1.111 vs 1.654 kW (-32.8 %, 1.00 pu) |
+
 ## How much to trust it
 
 - Network model checked against OpenDSS: phase-to-neutral voltages within 0.11 V, neutral within 0.024 V, losses within 0.8 W once the switch and earthing modelling difference is accounted for (see REPRODUCE.md section 6, item 5).
@@ -190,4 +213,5 @@ Meaning: under proportional sharing every checked record releases that customer'
 
 ## Not in the data yet (planned)
 
-- A second feeder; more measured days and other sets of house profiles.
+- LV9: day runs, record-error draws, 4 mm2 and aluminium current ratings (shared-cable thermal case).
+- More measured days and other sets of house profiles.
