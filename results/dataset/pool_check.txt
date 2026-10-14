@@ -1,0 +1,8 @@
+Residential PV data 30-min resolution.npy     SHA1 59cf9e081d22f54a272ede4a7a8dfaa1c7dd48ce OK
+Residential load data 30-min resolution.npy   SHA1 145d73c070f7e95c14524db684918b47daaf1e6e OK
+load pool shape (342, 365, 48) (households x days x half-hours), PV shape (365, 48)
+all-zero (missing) days: 203, in 21 households
+load kW: min 0.000, mean 0.526, max 16.53; negative values: 0
+mean kWh per house per day: median day 12.06; lowest day index 350 (2014-12-17, 9.71); highest 15 (2014-01-16, 27.80)
+PV: max 1.000, daily energy (pu-hours) median 3.99, max 7.59
+OE1 check: 99 profiles vs pool day index 350 (2014-12-17): max difference 8.88e-16 kW -> MATCH
