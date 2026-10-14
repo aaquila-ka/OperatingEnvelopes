@@ -1,0 +1,5 @@
+source_pu,truth,issued_kW_records,correct_kW_true,gap_kW,gap_pct,issued_on_true_worst_V,worst_case,cases_over_253,n_cases,correct_final_worst_V,correct_final_n_fail
+0.940,upstream_12,2.422783,1.552095,0.870688,56.098,258.9328,only_ab_export,127,130,252.9923,0
+0.940,l_2373,2.422783,1.601781,0.821002,51.256,258.4160,only_bc_export,127,130,252.9909,0
+1.000,upstream_12,1.096730,0.973562,0.123168,12.651,254.1295,only_bc_export,2,130,252.9971,0
+1.000,l_2373,1.096730,1.096730,0.000000,0.000,252.6857,only_bc_export,0,130,252.6857,0
