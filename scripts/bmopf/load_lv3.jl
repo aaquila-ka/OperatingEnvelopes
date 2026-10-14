@@ -28,7 +28,7 @@
 #   volt_watt p_limits = [p_low (cut-back level), p_high (full output)]
 #             curve value is p_high at U5 and p_low at U6   (lines 326-328)
 #   An earlier version of this file used [1.0, 0.2], which INVERTED the
-#   Volt-Watt curve. Caught in code review; fixed below.
+#   Volt-Watt curve. Caught in code review (AI-assisted review, checked by me); fixed below.
 
 using BMOPFTools
 

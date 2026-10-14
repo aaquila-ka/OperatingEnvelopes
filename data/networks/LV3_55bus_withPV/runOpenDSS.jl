@@ -1,4 +1,41 @@
-
+# runOpenDSS.jl: solve the LV3 street in OpenDSS and plot voltage against distance
+#
+# Adapted from data/LV9_258bus/run_LV9.jl in Frederik Geth's GPSTTopic82024
+# repository (BSD 3-Clause, Copyright 2025 Frederik Geth). Changes I made:
+#   - reads the LV3 export file (lv3_55bus_EXP_VOLTAGES.csv) instead of the LV9 one;
+#   - adds `export powers` to the OpenDSS commands;
+#   - adds a commented-out cd() line for running from the parent folder;
+#   - drops buses above 1000 V (the 11 kV side) before plotting;
+#   - small whitespace changes.
+# It is only an early look at the model, not used for any thesis result.
+#
+# Original licence notice (kept as required by the BSD 3-Clause licence):
+#
+# Copyright 2025 Frederik Geth
+#
+# Redistribution and use in source and binary forms, with or without modification, are
+# permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this list of
+#    conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice, this list of
+#    conditions and the following disclaimer in the documentation and/or other materials
+#    provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors may be used
+#    to endorse or promote products derived from this software without specific prior
+#    written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND ANY
+# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+# COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
+# TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using OpenDSSDirect
 const ODSS = OpenDSSDirect

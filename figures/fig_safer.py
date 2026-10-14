@@ -1,3 +1,7 @@
+# fig_safer.py: draws fig_safer.png, the gap with the basic limit vs the dropout-secure
+# (safer) limit. Reads doe_dirty_snapshot.csv, doe_robust.csv, lv9/lv9_sweep.csv,
+# doe_dropout_records_lv3.csv and lv9/lv9_dropout_records.csv in results/ (through data.py).
+# Run from this folder: python fig_safer.py
 import matplotlib.pyplot as plt, numpy as np
 from style import *
 from data import SAFER
@@ -20,13 +24,13 @@ ax.set_ylabel("too generous by (kW per home)")
 ax.set_ylim(0, 2.95)
 ax.grid(axis="x", visible=False)
 ax.legend(loc="upper right", frameon=False)
-ax.text(2.42, 1.35, "still above zero:\nbeing more careful\ndoes not fix\na wrong map", ha="left",
+ax.text(2.42, 1.35, "still above zero here:\nthe safer limit\nstill trusts the\nwrong records", ha="left",
         va="center", fontsize=14, color=MUTED)
 ax.set_xlim(-0.55, 3.15)
 fig.text(0.03, 0.02,
-         "Supply voltage 1.03 (12-home street) and 0.94 (123-home street). Wrong map: 12-home street, all 22 service cables really 4 mm\u00b2; "
-         "123-home street, its 12 shared cables.\nData (results/): basic = doe_dirty_snapshot.csv, doe_robust.csv, lv9/lv9_sweep.csv; "
-         "safer = doe_dropout_records_lv3.csv, lv9/lv9_dropout_records.csv.\n123-home street at supply 1.00: the safer gap is only 0.12 kW.", fontsize=10.5, color=MUTED, va="bottom")
+         "Supply voltage 1.03 (12-home street) and 0.94 (123-home street). Wrong map: 12-home street, all 22 service-cable segments really 4 mm\u00b2; "
+         "123-home street, its 12 shared 16 mm\u00b2 segments.\nData (results/): basic = doe_dirty_snapshot.csv, doe_robust.csv, lv9/lv9_sweep.csv; "
+         "safer = doe_dropout_records_lv3.csv, lv9/lv9_dropout_records.csv.\n123-home street at supply 1.00: the safer gap is only 0.12 kW (and 0 when only segment l_2373 is wrong).", fontsize=10.5, color=MUTED, va="bottom")
 fig.subplots_adjust(top=0.78, bottom=0.28, left=0.08, right=0.98)
 fig.savefig("fig_safer.png", dpi=200)
 print("ok")

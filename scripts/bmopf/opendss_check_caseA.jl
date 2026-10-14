@@ -38,7 +38,7 @@ function opendss_max_customer_v(kw, cust)
     master = abspath(joinpath(root, "data", "networks", "LV3_55bus_withPV", "Master.dss"))
     try
         # solve twice: in this setup the first solve after clear+redirect left zero voltages
-        for _ in 1:2                                    # warm-up bug: solve twice
+        for _ in 1:2                                    # warm-up: solve twice
             odcmd("clear")
             odcmd("redirect \"$master\"")
             odcmd("Edit Vsource.source pu=$(PU_X)")

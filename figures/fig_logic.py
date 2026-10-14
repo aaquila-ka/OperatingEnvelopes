@@ -1,3 +1,6 @@
+# fig_logic.py: draws fig_logic.png, a block diagram of one example, step by step.
+# Drawing only: it reads no results file.
+# Run from this folder: python fig_logic.py
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
 from style import *

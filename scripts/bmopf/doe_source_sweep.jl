@@ -3,7 +3,7 @@
 #
 # What it does (plain English):
 #   Checks how much the chosen source voltage drives the result (added after the
-#   code review). For each source voltage, Case A (records 16 mm2, all 22
+#   code review; AI-assisted review, checked by me). For each source voltage, Case A (records 16 mm2, all 22
 #   service cables really 4 mm2) at:
 #     - the 1 kW CSIRO snapshot
 #     - three sunny half-hours of the real day (11:00, 12:00, 13:00, Team-Nando loads)

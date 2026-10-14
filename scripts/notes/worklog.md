@@ -113,12 +113,12 @@ Also noted, to discuss with supervisors:
 
 (The DOE numbers from this stage used my own edited loads and are superseded by Stage 5.)
 
-## Stage 5: original CSIRO loads; code review fixes
+## Stage 5: original CSIRO loads; code review fixes (AI-assisted review, checked by me)
 
 - Loads.dss: all 12 loads set to kw=1 kvar=0.539743 (pf 0.88), the original CSIRO setting
   (Master `batchedit load..* kw=1` + OpenDSS default pf). My earlier edited values (0–4 kW, one load
   5 kvar) had no documented source and caused a large neutral shift at b1754.
-- Code review against BMOPFTools b7aa9a1 / PowerOptLab 953e45c: DOE maths confirmed;
+- Code review (AI-assisted review, checked by me) against BMOPFTools b7aa9a1 / PowerOptLab 953e45c: DOE maths confirmed;
   verify pins P exactly. Added: source-voltage guard, original-load guard, customer = inverter
   points guard, per-house binding report (S/5 kVA), helpers moved to scripts/bmopf/doe_common.jl,
   "undeliverable" labelling + counterfactual voltage with the inverter rating relaxed.
@@ -140,7 +140,7 @@ inverter-limited at 1.03 pu; Geth's australian_pv study uses 6 kVA with 5 kW, wh
 - Loads identical in both tools (12 × 1.000 kW, 0.540 kvar).
 - (B) OpenDSS InvControl = AS/NZS 4777.2 curves on phase-to-ground voltage with reactive priority
   (P = min(VW cap, sqrt(5² − Q²))): worst gap 0.000 kW / 0.000 kvar on all 12 PVs.
-- (A) pinned network: phase-to-neutral |diff| mean 0.071 V, max 0.104 V (b2740 b-n); neutral max 0.024 V.
+- (A) pinned network: phase-to-neutral |diff| mean 0.071 V, max 0.103 V (b2740 b-n); neutral max 0.024 V.
   The earlier 0.22 V gap came mostly from my edited loads.
 
 **Severity sweep (service-cable diagonal R × k, 1.03 pu, original loads)**
@@ -166,7 +166,7 @@ inverter-limited at 1.03 pu; Geth's australian_pv study uses 6 kVA with 5 kW, wh
 - One cable at a time: only the 12 customer service cables matter; the 10 other segments are dead-end stubs with no load. Customer Ld1291's cable l_3432 (B828, 29.5 m) alone gives the same DOE as all 22 wrong.
 
 **Full day** (doe_timeseries.jl)
-- 12 of 99 Team-Nando OE1-Ideal smart-meter profiles (commit 96abbab, BSD-3), 5-min averaged to 30 min, picked with seed 20261013.
+- 12 of 99 Team-Nando OE1-Ideal smart-meter profiles (commit 96abbab, BSD-3), 5-min averaged to 30 min, picked with the fixed seed RE_SEED = 20261013 (the same seed constant as the record-error draws).
 
 **Cross-check by a separate OpenDSS rebuild** (written in Python with AI assistance, not using the thesis scripts; checked by me)
 - Matched: clean DOE 4.527 vs 4.529 kW; l_3432 2.764 vs 2.734 kW. Code logic, units, seeds and topology also checked.
@@ -201,9 +201,9 @@ inverter-limited at 1.03 pu; Geth's australian_pv study uses 6 kVA with 5 kW, wh
 
 ## Stage 8: cable ratio, clear-sky day, checking under proportional sharing
 
-- Cable ratio (doe_ratio.jl): the dataset's 16 mm2 code is about 30 % above IEC 60228, so its 3.07 ratio is conservative. Diagonal R x 3.07 matches the 4 mm2 code swap within 0.005 kW. With the IEC ratio 4.0: gap +0.35 kW (12:00: 2.29 -> 2.63 kW), realised peak +0.5-0.8 V (11:30 sun-limited: 255.02 -> 255.77 V).
+- Cable ratio (doe_ratio.jl): the 3.07 ratio comes from the dataset's own line codes. Diagonal R x 3.07 matches the 4 mm2 code swap within 0.005 kW. With a higher test ratio of 4.0: gap +0.35 kW (12:00: 2.29 -> 2.63 kW), realised peak +0.5-0.8 V (11:30 sun-limited: 255.02 -> 255.77 V).
 - Clear-sky day (doe_clearsky.jl, ASSUMED peak 0.85 x 5 kW, half-sine over the measured sun hours): over-voltage in 21 half-hours (07:30-17:30) vs 13 on the measured cloudy day; peak 255.22 V held by Volt-Watt and the 5 kVA rating; up to 12 customers; curtailment up to 0.61 kW.
-- Checking records under proportional sharing (doe_verify_proportional.jl): at 12:00 the safe total rises 64 -> 75 -> 84 -> 94 -> 100 % after 0/3/6/9/11 checks (OPF-ranked), and still rises in shortest-first order; under equal sharing it stays at 46 % until the last critical check. Trade-off: the unchecked customer keeps a low limit (about 1.9-2.1 kW).
+- Checking records under proportional sharing (doe_verify_proportional.jl): at 12:00 the safe total rises 64 -> 75 -> 84 -> 94 -> 100 % after 0/3/6/9/11 checks (OPF-ranked), and still rises in shortest-first order; under equal sharing (OPF-ranked) it goes 46 -> 57 -> 60 -> 60 -> 100 % after 0/3/6/9/11 checks, and in shortest-first order it stays at 46 % until all 12 are checked. Trade-off: under proportional sharing the unchecked customer keeps a low limit (before the last check: 1.88-1.95 kW shortest-first, 1.95-3.14 kW OPF-ranked).
 - For "what should a utility do": hedge small resistance doubts in advance (3-11 %); check cable types, which pays off steadily only with proportional sharing.
 
 ## Stage 9: loss difference explained
@@ -214,7 +214,7 @@ inverter-limited at 1.03 pu; Geth's australian_pv study uses 6 kVA with 5 kW, wh
 
 **Four-part review (technical, contribution, dataset, writing; AI-assisted, checked by me)**: LV3 pipeline confirmed; LV9 clean DOE confirmed in OpenDSS (1.6537 vs 1.654 kW). Raised: LV9's 16 mm2 code is also used for shared mains; bound-point DOE vs partial export; no thermal limits; wording (kW and V first, screening rule not law); title vs scope (AI not trained yet); dataset not ML-ready yet (spec written).
 
-**Cable data check**: across the CSIRO LV feeders, the 16 mm2 Cu code covers 99 % of service cables (100 % on LV3 and LV9); 4 mm2 appears only in the line-code library. 16 mm2 code 1.49 ohm/km self resistance (about 30 % above the IEC 60228 20 °C value, consistent with a hot-conductor rating), 4 mm2 code 4.57 ohm/km (close to IEC 4.61 at 20 °C), hence ratio 3.07 vs IEC 4.0.
+**Cable data check**: across the CSIRO LV feeders, the 16 mm2 Cu code covers 99 % of service cables (100 % on LV3 and LV9); 4 mm2 appears only in the line-code library. 16 mm2 code 1.49 ohm/km self resistance, 4 mm2 code 4.57 ohm/km, hence the ratio 3.07 used throughout (from the dataset's line codes, not from a standard).
 
 **LV9 (123 customers)**: prepared like LV3; BMOPF vs OpenDSS 0.0007 V with ideal switches (0.54 V from the 1 mOhm switch convention). 16 mm2 segments: 123 drops, 12 shared, 44 stubs.
 - Shared cables carry the risk: 12 shared wrong at 0.94 pu: gap 1.46 kW, 259 V, 64 customers over; l_2373 (43 customers) alone 1.33 kW.

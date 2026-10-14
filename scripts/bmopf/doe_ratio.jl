@@ -1,15 +1,15 @@
 # =============================================================================
-# doe_ratio.jl: does the 4 mm2 / 16 mm2 resistance ratio matter? (3.07 dataset vs 4.0 IEC)
+# doe_ratio.jl: does the 4 mm2 / 16 mm2 resistance ratio matter? (3.07 dataset vs 4.0 test)
 #
 # What it does (plain English):
-#   The dataset's line codes give 4 mm2 / 16 mm2 = 3.07 (its 16 mm2 code is about 30 %
-#   above the IEC 60228 maximum, its 4 mm2 code close to IEC). IEC 60228 maximum DC
-#   values give about 4.0. Records always say 16 mm2 (dataset code). The TRUE street
-#   has all 22 service cables:
+#   The dataset's line codes give 4 mm2 / 16 mm2 = 3.07. This script also tests a
+#   higher ratio of 4.0 (the variant name ends in _IEC; that is only a label, the
+#   value is not cited from the standard here). Records always say 16 mm2 (dataset
+#   code). The TRUE street has all 22 service-cable segments:
 #     dataset_4mm2_code : the dataset's 4 mm2 line code (whole code swapped; ratio 3.07),
 #                         the same as in every other script
 #     diagR_x3.07       : 16 mm2 code with diagonal R x 3.07 (consistency check vs the swap)
-#     diagR_x4.00_IEC   : 16 mm2 code with diagonal R x 4.0 (IEC-like ratio)
+#     diagR_x4.00_IEC   : 16 mm2 code with diagonal R x 4.0 (higher test ratio)
 #   Settings: 1 kW snapshot, 11:30 and 12:00 of the real day; source 1.03 pu; equal
 #   allocation. Reports the correct DOE, the gap, and the realised voltage with
 #   Volt-Watt on: worst case (may export the full issued DOE) and sun-limited
@@ -24,8 +24,8 @@
 #   include("scripts/bmopf/doe_ratio.jl")   then   run_ratio()
 # Used for: REPRODUCE.md step 14 and section 6 item 2 (ratio 4.0 at 12:00: correct
 #           1.624 kW, gap 2.628 kW, +161.8 %)
-# Credits:  CSIRO LV3 data and line codes (CC BY-NC-SA 4.0); IEC 60228 conductor
-#           resistances; Team-Nando OE1-Ideal load profiles (BSD-3); BMOPFTools.jl and
+# Credits:  CSIRO LV3 data and line codes (CC BY-NC-SA 4.0);
+#           Team-Nando OE1-Ideal load profiles (BSD-3); BMOPFTools.jl and
 #           PowerOptLab.jl by Frederik Geth; Ipopt
 # =============================================================================
 

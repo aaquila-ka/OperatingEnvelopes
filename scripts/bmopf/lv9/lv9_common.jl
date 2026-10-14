@@ -15,7 +15,7 @@
 # Outputs:  none (helper functions and constants only).
 # How to run (from the repo folder, in `julia +1.11 --project=bmopf`):
 #   included by the other LV9 scripts; not run directly.
-# Used for: every LV9 result (REPRODUCE.md steps 20-31).
+# Used for: every LV9 result (REPRODUCE.md steps 20-24, 29-31 and 33).
 # Credits:  CSIRO LV9 feeder data ("Realistic Australian MV feeder with associated LV
 #           feeders" v1, doi 10.25919/ghnz-bk28, CC BY-NC-SA 4.0; copy shipped with
 #           BMOPFTools b7aa9a1, test/data/LV/LV9_258bus); BMOPFTools.jl (b7aa9a1) and

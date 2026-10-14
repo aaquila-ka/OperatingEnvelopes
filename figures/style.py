@@ -1,3 +1,5 @@
+# style.py: shared colours, fonts and plot settings for every fig_*.py script.
+# Reads no results file.
 import matplotlib as mpl, matplotlib.pyplot as plt
 from matplotlib import font_manager as fm
 import os

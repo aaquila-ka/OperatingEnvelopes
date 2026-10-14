@@ -45,7 +45,7 @@ function run_pinned_validation()
     try
         # load and solve twice: in this setup the first solve after clear+redirect left all
         # voltages at zero (OpenDSSDirect warm-up)
-        for _ in 1:2    # OpenDSSDirect warm-up bug: first solve leaves zeros
+        for _ in 1:2    # warm-up: in my setup the first solve left zeros
             OpenDSSDirect.Text.Command("clear")
             OpenDSSDirect.Text.Command("redirect \"$master\"")
             OpenDSSDirect.Text.Command("set maxcontroliter=200")

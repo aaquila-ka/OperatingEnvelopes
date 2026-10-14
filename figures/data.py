@@ -1,3 +1,6 @@
+# data.py: collects the numbers shared by several fig_*.py scripts (it draws nothing).
+# Reads doe_dropout_records_lv3.csv, doe_source_sweep.csv, lv9/lv9_sweep.csv,
+# doe_dirty_snapshot.csv, doe_robust.csv and lv9/lv9_dropout_records.csv in ../results.
 # All figure numbers are read straight from the results files in ../results. Nothing is typed by hand.
 import pandas as pd, os
 R = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "results")

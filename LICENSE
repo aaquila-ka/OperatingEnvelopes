@@ -6,6 +6,10 @@ This licence covers the code written for this thesis (the scripts in scripts/
 and figures/). It does not cover:
   - data/networks/ and the results derived from it: CC BY-NC-SA 4.0, from the
     CSIRO dataset (doi: 10.25919/ghnz-bk28), see data/networks/README.md;
+  - the figure images in figures/ that show results derived from that data:
+    CC BY-NC-SA 4.0, see figures/README.md;
+  - data/networks/LV3_55bus_withPV/runOpenDSS.jl: BSD 3-Clause, adapted from
+    Frederik Geth's GPSTTopic82024 (notice at the top of that file);
   - data/profiles/: BSD 3-Clause, Team-Nando, licence files in that folder;
   - third-party tools, which keep their own licences (see ACKNOWLEDGEMENTS.md).
 

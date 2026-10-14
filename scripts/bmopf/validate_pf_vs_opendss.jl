@@ -10,7 +10,7 @@
 #   inverter settings, but the BMOPFTools power flow does not fix inverter P (Volt-Watt is a
 #   cap) and returns Q = 0, so the inverter outputs differ between the tools and so do the
 #   voltages (up to 2.07 V on the current model). This is NOT a network-model validation;
-#   use validate_network_pinned.jl for that (0.104 V). Also prints the OpenDSS PV outputs.
+#   use validate_network_pinned.jl for that (0.103 V). Also prints the OpenDSS PV outputs.
 #
 # Inputs:   data/networks/LV3_55bus_withPV/Master.dss (OpenDSS); includes load_lv3.jl, which
 #           builds the corrected `net` (BMOPFTools).
