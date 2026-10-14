@@ -1,0 +1,3 @@
+feeder,setting,source_pu,phase_secure_kW,dropout_secure_kW,change_vs_phase_secure_pct,n_cases_checked,worst_V_VW,worst_case,n_fail
+LV9,clean_1kW,0.940,2.444748,2.422783,-0.898,130,252.9980,only_bc_export,0
+LV9,clean_1kW,1.000,1.111052,1.096730,-1.289,130,253.0032,only_bc_export,0
