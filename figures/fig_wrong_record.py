@@ -49,7 +49,8 @@ a2.set_xlim(-0.5, 1.5)
 a2.grid(axis="x", visible=False)
 a2.set_title("what really happens", loc="left", fontsize=17, color=MUTED)
 fig.text(0.03, 0.01, "TRUE street (test case): all 22 service-cable segments are 4 mm\u00b2, map says 16 mm\u00b2 (85 of 85 on/off cases go over 253 V). With only the one critical cable wrong: same limits,\n"
-         "same 255.05 V, 70 of 85 cases over. Voltage axis starts at 250 V. Data: results/doe_dropout_records_lv3.csv", fontsize=10.5, color=MUTED)
-fig.subplots_adjust(top=0.78, bottom=0.2, left=0.08, right=0.97)
+         "same 255.05 V, 70 of 85 cases over. True-cable point drawn at the 253 V limit: that limit is the highest one keeping all 85 cases at or below 253 V.\n"
+         "Voltage axis starts at 250 V. Data: results/doe_dropout_records_lv3.csv", fontsize=10.5, color=MUTED)
+fig.subplots_adjust(top=0.78, bottom=0.22, left=0.08, right=0.97)
 fig.savefig("fig_wrong_record.png", dpi=200)
 print("ok")
