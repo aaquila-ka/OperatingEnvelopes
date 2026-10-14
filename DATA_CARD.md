@@ -1,6 +1,6 @@
 # Data card: clean vs dirty DOE results (LV3 feeder)
 
-Last updated 13 Oct 2026 (after two independent reviews; see "How much to trust it").
+Last updated 14 Oct 2026 (dropout-secure DOEs added; after two independent reviews, see "How much to trust it").
 
 ## What this is
 
@@ -185,6 +185,19 @@ Meaning: under proportional sharing every checked record releases that customer'
 - Cable currents at the clean DOE: 16 mm2 service cables at most 18.6 A, 240 mm2 Al mains 36.8 A, 400 mm2 Al 73.3 A; far below ratings (16 mm2 Cu 4-core XLPE: 110 A buried / 81 A in duct, Prysmian datasheet). Thermal limits do not bind on LV3.
 - Phase-secure equal DOE (highest equal limit safe for all 7 phase patterns, bisection with verify_operating_envelope): 4.313 kW vs 4.529 kW (-4.8 %, snapshot) and 3.841 vs 4.253 kW (-9.7 %, 12:00).
 
+## Files 19-22: LV3 dropout-secure DOE (14 Oct 2026)
+
+Why: a DOE checked only with everyone exporting (bound point), or with whole phases silent (phase-secure), can still break 253 V when SOME customers export nothing. "Dropped" = that customer's export cap is 0; everyone else may export up to the DOE; realised reading.
+
+| File | Content | Key numbers |
+|---|---|---|
+| results/doe_dropout_lv3.csv | bound-point and phase-secure DOEs vs nobody + every 1 or 2 dropped customers (79 cases), snapshot and 12:00 | bound-point: 13 / 28 of 79 cases over 253 V (worst 253.16 / 253.30 V); phase-secure: 8 / 2 of 79 (253.04 / 253.08 V); the snapshot failures all involve ld1895_load_b dropped |
+| results/doe_dropout_secure_lv3.csv | dropout-secure equal DOE (85 cases: nobody, 7 phase patterns, all 1- and 2-customer dropouts) | 4.203 kW snapshot, 3.664 kW 12:00 (-7.2 % / -13.8 % vs bound point); final check 0 of 85 over 253 V |
+| results/doe_dropout_lv3_full_day_1200_dropout_secure.csv | the 12:00 dropout-secure DOE vs all 4094 on/off combinations (`mask`: bit i = i-th customer in sorted id order dropped) | 0 of 4094 over 253 V; worst 253.00 V with all 4 phase-a customers silent |
+| results/doe_dropout_records_lv3.csv | headline redone: dropout-secure DOE from the records (16 mm2) applied on the true network; correct dropout-secure DOE on the true network | snapshot: gap 1.488 kW (+54.8 %), 254.62 V; 12:00: gap 1.718 kW (+88.2 %), 255.05 V; all 22 wrong: 85 of 85 cases over 253 V; l_3432 only: 70 of 85, same correct DOE |
+
+Meaning: securing the DOE against customer behaviour (dropouts) does not secure it against wrong records; every check uses the same wrong network.
+
 ## Second feeder: CSIRO LV9 (results/lv9/)
 
 LV9: 258 buses, 123 single-phase customers (41 per phase), 500 kVA, HV tap 1.000 (LV9 is about 2.5 % higher than LV3 at the same source pu). Prepared like LV3 (scripts/bmopf/lv9/prepare_lv9.jl). The 16 mm2 line code is used for 123 customer drops, 12 shared segments (carrying 2-43 customers) and 44 dead-end stubs.
@@ -201,6 +214,10 @@ LV9: 258 buses, 123 single-phase customers (41 per phase), 500 kVA, HV tap 1.000
 | lv9_cable_currents.csv | highest current per segment kind at the clean DOE | shared 16 mm2 l_2373: 217 A (0.94 pu) / 153 A (1.00 pu) vs 110 A buried rating |
 | lv9_thermal.csv | DOE with current limits (16 mm2 110 or 81 A, 120 mm2 345 A) | clean DOE thermally limited by l_2373: 2.29 kW (0.94 pu, 110 A), 1.04 kW (1.00 pu, 110 A); drop errors then negligible; shared-cable case incomplete (no 4 mm2 rating) |
 | lv9_phase_secure.csv | phase-secure equal DOE | 2.445 vs 3.587 kW (-31.8 %, 0.94 pu); 1.111 vs 1.654 kW (-32.8 %, 1.00 pu) |
+| lv9_dropout_check.csv | phase-secure DOE vs 130 cases (nobody, 6 phase patterns, each of 123 customers dropped) | all single dropouts pass; "only_bc_export" 253.20 V (0.94 pu) / 253.13 V (1.00 pu) |
+| lv9_dropout_diagnostic.csv | per phase pattern: verify_operating_envelope verdict next to the realised voltage | verify says feasible for all 7 patterns, realised "bc" is 0.13-0.20 V above 253 V (see REPRODUCE.md item 20) |
+| lv9_dropout_secure.csv | dropout-secure equal DOE (realised reading, 130 cases) | 2.423 kW (0.94 pu, -0.9 % vs phase-secure), 1.097 kW (1.00 pu, -1.3 %); 0 of 130 over 253 V |
+| lv9_dropout_records.csv | headline redone with the dropout-secure DOE | 0.94 pu: 12 shared wrong gap 0.871 kW (+56.1 %), 258.93 V, 127 of 130 cases over; l_2373 only gap 0.821 kW (+51.3 %), 258.42 V; 1.00 pu: 12 shared gap 0.123 kW (+12.7 %), 254.13 V, 2 of 130; l_2373 only: no gap (DOE limited by source voltage, cable carries little current) |
 
 ## How much to trust it
 
@@ -214,4 +231,5 @@ LV9: 258 buses, 123 single-phase customers (41 per phase), 500 kVA, HV tap 1.000
 ## Not in the data yet (planned)
 
 - LV9: day runs, record-error draws, 4 mm2 and aluminium current ratings (shared-cable thermal case).
-- More measured days and other sets of house profiles.
+- More measured days and other sets of house profiles. The current day is AusNet day 350 (17 Dec 2014, lowest-demand day of the year); Team-Nando's 342-household x 365-day pool is the planned source for more days.
+- LV9 pair dropouts (7503 cases) and LV9 at 0.97 pu with the dropout-secure DOE.

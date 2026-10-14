@@ -1,7 +1,7 @@
 # How to reproduce the thesis results
 
 Thesis: Learning dynamic operating envelopes from imperfect data (UQ REIT7841, Aaquila Konnimera Akbar)
-Last updated 13 Oct 2026, after two independent reviews. Main results produced at git commit ae2dc4f; robust and sharing-rule results added afterwards (see git log).
+Last updated 14 Oct 2026 (dropout-secure DOEs added, git commits e5ea399 to 73764a5). Main results produced at git commit ae2dc4f; later results added afterwards (see git log).
 
 ## 1. Software (locked)
 
@@ -33,11 +33,12 @@ First-time setup, from C:\thesis\OperatingEnvelopes in PowerShell:
 
 `scripts/bmopf/load_lv3.jl` also fixes the inverter settings after import (see the comments at the top of that file).
 
-House usage for the day runs: `data/profiles/TeamNando_OE1_LoadShapes.txt` (Team-Nando OE1-Ideal, commit 96abbab, BSD-3; licence in the same folder).
+House usage for the day runs: `data/profiles/TeamNando_OE1_LoadShapes.txt` (Team-Nando OE1-Ideal, commit 96abbab, BSD-3; licence in the same folder; SHA1 FE3A06F54025E1B4268F523AC1DB1E7870BCF33C).
+These 99 profiles are AusNet households from Team-Nando's 342-household x 365-day pool (`Res_load_data_30min_res.npy`, in OEs-The-Basics and MV-LV-Networks), all on day index 350 = Wednesday 17 Dec 2014: the lowest-demand day of that year (mean 9.71 kWh per house vs 12.06 kWh on the median day). Checked 14 Oct 2026: the 5-min OE1 shapes averaged to 30 min equal the pool values to 1e-15 kW for all 99. The OE1 PV shape is not from the pool's PV file; its daily energy is above about 76 % of the pool's PV days.
 
 ## 3. Run order
 
-Start Julia from C:\thesis\OperatingEnvelopes with `julia +1.11 --project=bmopf`. For steps 7-24, first run `using Logging; disable_logging(Logging.Warn)` to hide the repeated import warnings, and use a fresh Julia session for each script.
+Start Julia from C:\thesis\OperatingEnvelopes with `julia +1.11 --project=bmopf`. For steps 7-30, first run `using Logging; disable_logging(Logging.Warn)` to hide the repeated import warnings, and use a fresh Julia session for each script.
 
 | # | Command | What it does | Output |
 |---|---|---|---|
@@ -65,6 +66,12 @@ Start Julia from C:\thesis\OperatingEnvelopes with `julia +1.11 --project=bmopf`
 | 22 | `include("scripts/bmopf/lv9/lv9_partial.jl")` then `run_lv9_partial()` | LV9 partial export and cable currents | results/lv9/lv9_partial.csv, lv9_cable_currents.csv |
 | 23 | `include("scripts/bmopf/lv9/lv9_thermal.jl")` then `run_lv9_thermal()` | LV9 with cable current limits | results/lv9/lv9_thermal.csv |
 | 24 | `include("scripts/bmopf/lv9/lv9_phase_secure.jl")` then `run_phase_secure_lv9()` | LV9 phase-secure DOE (~6 min) | results/lv9/lv9_phase_secure.csv |
+| 25 | `include("scripts/bmopf/doe_dropout_lv3.jl")` then `run_dropout_lv3()` | bound-point and phase-secure DOEs vs every 1 or 2 dropped customers (79 cases x 2 DOEs x 2 settings, ~2 min) | results/doe_dropout_lv3.csv |
+| 26 | (same session) `run_dropout_secure_lv3()` | dropout-secure DOE: 7 phase patterns + all 1- and 2-customer dropouts (85 cases), bisection (~5 min) | results/doe_dropout_secure_lv3.csv |
+| 27 | (same session) `run_dropout_lv3_full()` | dropout-secure DOE at 12:00 vs all 4094 on/off combinations (~15 min, resumable) | results/doe_dropout_lv3_full_day_1200_dropout_secure.csv |
+| 28 | `include("scripts/bmopf/doe_dropout_records_lv3.jl")` then `run_dropout_records_lv3()` | headline redone: records-based dropout-secure DOE on the true network (needs 26, ~6 min) | results/doe_dropout_records_lv3.csv |
+| 29 | `include("scripts/bmopf/lv9/lv9_dropout.jl")` then `run_lv9_dropout_check()` and `run_lv9_dropout_secure()` | LV9: phase-secure DOE vs 130 cases (nobody, 6 phase patterns, 123 single dropouts); verify-vs-realised diagnostic; dropout-secure DOE (needs 24, ~15 min) | results/lv9/lv9_dropout_check.csv, lv9_dropout_diagnostic.csv, lv9_dropout_secure.csv |
+| 30 | `include("scripts/bmopf/lv9/lv9_dropout_records.jl")` then `run_lv9_dropout_records()` | LV9 headline redone with the dropout-secure DOE (shared cables / l_2373 wrong; needs 29, ~25 min) | results/lv9/lv9_dropout_records.csv |
 
 The ~46 "from_dss: ... could not be represented" warnings at import are expected (OpenDSS fields like `units` that BMOPF does not need).
 
@@ -89,6 +96,11 @@ The ~46 "from_dss: ... could not be represented" warnings at import are expected
 | LV9 clean DOE | 3.587 kW (0.94 pu), 1.654 kW (1.00 pu), voltage-limited; OpenDSS 0.0007 V with ideal switches |
 | LV9 shared vs drops (0.94 pu) | 12 shared wrong: gap 1.458 kW, 258.99 V; l_2373 alone 1.333 kW; drops wrong: 0.238 kW; 6 of 123 single drops matter |
 | LV9 thermal (110 A) / phase-secure | 2.293 kW (0.94 pu) / 2.445 kW (0.94 pu) |
+| LV3 dropout check (79 cases) | bound-point: 13 (snapshot, worst 253.16 V) and 28 (12:00, 253.30 V) cases over 253 V; phase-secure: 8 (253.04 V) and 2 (253.08 V) |
+| LV3 dropout-secure DOE | 4.203 kW snapshot (-7.2 % vs bound point, -2.5 % vs phase-secure); 3.664 kW 12:00 (-13.8 %, -4.6 %); 85 cases and all 4094 combinations at 12:00: 0 over 253 V, worst 253.00 V (phase a silent) |
+| LV3 headline, dropout-secure | snapshot: issued 4.203, correct 2.715 kW, gap 1.488 kW (+54.8 %), 254.62 V; 12:00: 3.664 vs 1.947 kW, gap 1.718 kW (+88.2 %), 255.05 V; all 22 wrong: 85 of 85 cases over 253 V; l_3432 only: 70 of 85, same correct DOE |
+| LV9 dropout check / dropout-secure | phase-secure DOE: all 123 single dropouts pass; "only b and c export" 253.20 V (0.94 pu) / 253.13 V (1.00 pu) although verify said feasible; dropout-secure 2.423 kW (0.94 pu, -0.9 %) / 1.097 kW (1.00 pu, -1.3 %), about -33 % vs bound point |
+| LV9 headline, dropout-secure | 0.94 pu: 12 shared wrong correct 1.552 kW, gap 0.871 kW (+56.1 %), 258.93 V, 127 of 130 cases; l_2373 only 1.602 kW, gap 0.821 (+51.3 %), 258.42 V; 1.00 pu: 12 shared gap 0.123 kW (+12.7 %), 254.13 V, 2 of 130; l_2373 only: no gap |
 | Sharing rules, l_3432 wrong | equal: 12 of 12 limits change, 21.55 kW (snapshot); proportional: 1 of 12, 1.85 kW; realised 254.60 V at b828 b-n under every rule |
 
 ## 5. Main modelling choices
@@ -99,6 +111,7 @@ The ~46 "from_dss: ... could not be represented" warnings at import are expected
 - Inverters: 5 kVA, Volt-VAr and Volt-Watt on phase-to-neutral voltage, reactive priority.
 - Source voltage: 1.03 pu for the main results (also used in Geth's PowerOptLab LV3 study, there with 1 % source unbalance); 1.00-1.035 pu in the source sweep.
 - Cable error: 22 service-cable segments; 16 mm² vs 4 mm² copper from the dataset's own line codes (resistance ratio 3.07).
+- Security of the DOE: bound-point (everyone exports at once), phase-secure (also safe when one or two whole phases export nothing, checked with verify_operating_envelope) and dropout-secure (realised reading <= 253.005 V for nobody dropped, the 7 phase patterns, and every 1- or 2-customer dropout on LV3 / every single dropout on LV9). The dropout-secure DOE is the safest version and is used for the headline results of 14 Oct 2026.
 - Two readings of what an issued DOE does on the true street: bound-point (everyone exports exactly the DOE, Volt-Watt off; worst case) and realised (everyone may export up to the cap, all inverter laws on; physical). Day runs also cap export by the sun available.
 
 ## 6. Known issues and limitations
@@ -122,7 +135,12 @@ The ~46 "from_dss: ... could not be represented" warnings at import are expected
 16. LV9 voltage comparison depends on the switch convention: with the dataset's 1 mOhm switches (OpenDSS) the LV9 equal DOE is about 0.10 kW higher than with ideal switches (BMOPF); voltages differ by up to 0.75 V.
 17. "LV9 1.00 pu ~ LV3 1.025 pu" means the same transformer no-load voltage only; LV9 is voltage-limited even at 0.92-0.94 pu.
 18. Current ratings are only applied to copper cables (16 mm2 110 A buried / 81 A duct, 120 mm2 345 A, Prysmian datasheet). Aluminium mains and the 4 mm2 cable have no rating yet, so the LV9 shared-cable thermal case is incomplete (negative gaps there are an artefact). AS/NZS 3008.1.1 to be consulted.
-19. All DOEs except doe_phase_secure / lv9_phase_secure are bound-point DOEs (everyone exports at once); they are not automatically safe when one or two phases do not export (LV3 +0.3 V, LV9 +5.4 V).
+19. All DOEs before step 25 except doe_phase_secure / lv9_phase_secure are bound-point DOEs (everyone exports at once); they are not automatically safe when one or two phases do not export (LV3 +0.3 V, LV9 +5.4 V). Steps 25-30 give the dropout-secure versions.
+20. The phase-secure check (verify_operating_envelope with the 7 phase patterns) and the realised reading disagree slightly: patterns the check accepts give up to 0.01 V (LV3) and 0.20 V (LV9, "only b and c export") above 253 V in the realised reading. Likely cause (not yet confirmed): the Volt-VAr/Volt-Watt laws are smoothed (about 0.002 pu), which gives the optimiser a little freedom when the limit is imposed. The dropout-secure DOE uses the realised reading, so it is not affected. To ask F. Geth.
+21. Near the limit the DOE is very sensitive to the voltage tolerance: on LV3 at 12:00, removing violations of under 0.1 V costs 4.6 % of export (3.841 -> 3.664 kW). The tolerance used is 253.005 V.
+22. On LV3, checking the 85 cases found the same worst case as checking all 4094 on/off combinations, so dropping 3 or more customers never made things worse there. On LV9, pairs (7503 cases) were not checked; single dropouts never bind, the binding case is always one whole phase silent.
+23. The harm from a wrong record is not monotone in source voltage (also item 13): on LV9 the dropout-secure gap is 0.82-0.87 kW at 0.94 pu but 0-0.12 kW at 1.00 pu, where every customer is already limited to about 1.1 kW and the shared cable carries little current.
+24. Current ratings found since item 18 (not yet used in any run): 4 mm2 Cu 33 A buried / 33 A duct and 16 mm2 110 / 81 A (MEC XV datasheet, AS/NZS 3008.1.1 basis); AusNet library in Team-Nando MV-LV-Networks: 16 mm2 Cu 107 / 91 A, 240 mm2 Al 280 / 325 A (meaning of the two columns undocumented, probably summer / winter).
 
 ## 7. Where the history is
 
