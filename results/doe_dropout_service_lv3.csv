@@ -1,0 +1,11 @@
+setting,source_pu,truth,issued_kW_records,correct_kW_true,gap_kW,gap_pct,issued_on_true_worst_V,worst_case,worst_case_customers_over_253,cases_over_253,n_cases
+snapshot_1kW,1.030,type_l3432,4.203082,3.880873,0.322209,8.302,253.2333,"ld1668_load_a+ld2050_load_a+ld24_load_a+ld868_load_a",1,70,85
+snapshot_1kW,1.030,type_all12,4.203082,3.601762,0.601320,16.695,253.4764,"ld1291_load_b+ld1668_load_a+ld1895_load_b+ld2050_load_a+ld2186_load_b+ld248_load_b+ld24_load_a+ld868_load_a",4,77,85
+snapshot_1kW,1.030,lengthbias_1.25,4.203082,3.951677,0.251405,6.362,253.1802,"ld1291_load_b+ld1668_load_a+ld1895_load_b+ld2050_load_a+ld2186_load_b+ld248_load_b+ld24_load_a+ld868_load_a",2,17,85
+snapshot_1kW,1.030,lengthbias_1.50,4.203082,3.739265,0.463817,12.404,253.3554,"ld1291_load_b+ld1668_load_a+ld1895_load_b+ld2050_load_a+ld2186_load_b+ld248_load_b+ld24_load_a+ld868_load_a",3,65,85
+snapshot_1kW,1.030,wiring_100,4.203082,4.203082,0.000000,0.000,252.8618,"ld1291_load_b+ld1668_load_a+ld1895_load_b+ld2050_load_a+ld2186_load_b+ld248_load_b+ld24_load_a+ld868_load_a",0,0,85
+day_1200,1.030,type_l3432,3.664343,3.076581,0.587762,19.104,253.4216,"ld1668_load_a+ld2050_load_a+ld24_load_a+ld868_load_a",1,70,85
+day_1200,1.030,type_all12,3.664343,3.041691,0.622652,20.471,253.4281,"ld1668_load_a+ld2050_load_a+ld24_load_a+ld868_load_a",3,84,85
+day_1200,1.030,lengthbias_1.25,3.664343,3.402221,0.262122,7.704,253.1464,"ld1668_load_a+ld2050_load_a+ld24_load_a+ld868_load_a",2,8,85
+day_1200,1.030,lengthbias_1.50,3.664343,3.179462,0.484881,15.250,253.3164,"ld1668_load_a+ld2050_load_a+ld24_load_a+ld868_load_a",3,76,85
+day_1200,1.030,wiring_100,3.664343,3.664343,0.000000,0.000,253.0000,"ld1668_load_a+ld2050_load_a+ld24_load_a+ld868_load_a",0,0,85
