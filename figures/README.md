@@ -1,6 +1,6 @@
 # Figures
 
-Each `fig_*.py` draws one plot straight from the CSV files in `../results/`; no number is typed by hand. Run from this folder, for example `python fig_wrong_record.py` (needs Python 3 with pandas and matplotlib).
+Each `fig_*.py` draws one plot straight from the CSV files in `../results/`; no number is typed by hand. Run from this folder, for example `python fig_wrong_record.py` (needs Python 3 with pandas, NumPy and matplotlib).
 
 | Script | Plot | Reads |
 |---|---|---|
@@ -12,4 +12,8 @@ Each `fig_*.py` draws one plot straight from the CSV files in `../results/`; no 
 | fig_validation.py | BMOPFTools vs OpenDSS, same inverter outputs | pf_validation_lv3_pinned.csv |
 | fig_logic.py | block diagram of one example, step by step | (drawing only) |
 
-`data.py` collects the numbers shared by several plots; `style.py` sets colours and fonts. For the hand-drawn look, put `xkcd-script.ttf` from [ipython/xkcd-font](https://github.com/ipython/xkcd-font) (CC BY-NC 3.0) in this folder; without it the plots use DejaVu Sans.
+`data.py` collects the numbers shared by several plots; `style.py` sets colours and fonts. The scripts need Python 3 with pandas, NumPy and matplotlib.
+
+**Font.** For the hand-drawn look, put `xkcd-script.ttf` from [ipython/xkcd-font](https://github.com/ipython/xkcd-font) in this folder (the font file is not included here); without it the plots use DejaVu Sans. The xkcd Script font is made by the ipython/xkcd-font contributors from the handwriting of Randall Munroe (xkcd) and is licensed under [CC BY-NC 3.0](https://creativecommons.org/licenses/by-nc/3.0/), as stated in that repository.
+
+**Licence of the images.** The scripts are MIT (see ../LICENSE). The PNG images that show results (all except `fig_logic.png`) are derived from the CSIRO street models, so they are shared under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) (see ../data/networks/LICENSE.md). Images drawn with the xkcd Script font also carry that font's non-commercial terms.

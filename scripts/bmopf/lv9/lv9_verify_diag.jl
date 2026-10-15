@@ -26,10 +26,12 @@ include(joinpath(pwd(), "scripts", "bmopf", "phase_secure_core.jl"))
 
 # realised reading, but return the whole result (snapshot) as well
 function realised_full(net, caps)
+    # Copy the street and remove every voltage limit
     ev = deepcopy(net)
     for b in values(ev["bus"]), k in ("vpn_min", "vpn_max", "vpg_min", "vpg_max", "v_min", "v_max", "vm_min", "vm_max")
         delete!(b, k)
     end
+    # Each home may export up to its cap (kW -> W, at least 1 W)
     cps = [ConnectionPoint(id = cp.id, bus = cp.bus, phase_terminals = cp.phase_terminals,
                            neutral = cp.neutral, export_max = max(1000.0 * caps[cp.id], 1.0),
                            ibr_id = cp.ibr_id) for cp in connection_points(ev)]
@@ -37,21 +39,28 @@ function realised_full(net, caps)
                                     security = :bound_point, solver_options = OPTS)
 end
 
+# Inverter P and Q of one home from a solved result
 getpq(snap, net, id) = begin
     inv = net["ibr"][id]; g = snap["ibr"][id][String(inv["terminal_map"][1])]
     (Float64(g["pg"]), Float64(g["qg"]))
 end
+# Phase-to-neutral voltage (what a home feels) and the neutral's own voltage at one home's point
 getv(snap, cp) = begin
+    # Bus names may be stored in lower case in the result
     key = haskey(snap["bus"], cp.bus) ? cp.bus : lowercase(cp.bus)
     ts = snap["bus"][key]; ph = cp.phase_terminals[1]
     (vpn(ts, ph), abs(complex(ts["n"]["vr"], ts["n"]["vi"])))
 end
 
+# Compare A (verify) and B (realised) home by home, for one DOE (export limit every home gets)
+# and one phase pattern (default: only phases b and c export)
 function run_lv9_verify_diag(; pu = 0.94, kw = 2.445, pattern = "bc")
     net = make_net(pu)
     cps = connection_points(net)
+    # The 0 / 1 export pattern for each home (1 = on an exporting phase)
     j = findfirst(==(pattern), PS_PATTERNS)
     u = ps_patterns(cps)[j]
+    # The same limit for every home, in W
     caps_w = Dict(cp.id => 1000.0 * kw for cp in cps)
     # A: verify
     ev = verify_operating_envelope(net, cps, caps_w; utilizations = [u], solver_options = OPTS)
@@ -59,12 +68,16 @@ function run_lv9_verify_diag(; pu = 0.94, kw = 2.445, pattern = "bc")
     @printf("A verify: feasible %s, termination %s, primal %s\n", ev.feasible[1], ev.termination_status[1],
             get(dA, "primal_status", "?"))
     println("A diagnostics keys: ", join(sort(collect(keys(dA))), ", "))
+    # Print the margin and binding information if the result has it
     for k in ("minimum_margins", "minimum_margin_locations", "binding_constraints")
         haskey(dA, k) && println("  ", k, ": ", dA[k])
     end
     snapA = ev.snapshots[1]
+    # Stop if A has no bus results
     haskey(snapA, "bus") || (println("A snapshot has no bus results (infeasible?) - stopping"); return)
     # B: realised
+    # B: homes on exporting phases may export up to the DOE, the others 0 (realised reading:
+    # inverter rules on, no voltage limit imposed)
     caps_kw = Dict(cp.id => u[i] * kw for (i, cp) in enumerate(cps))
     rB = realised_full(net, caps_kw)
     snapB = rB.snapshots[1]
@@ -74,6 +87,7 @@ function run_lv9_verify_diag(; pu = 0.94, kw = 2.445, pattern = "bc")
     rows = String[]
     sumA = zeros(2); sumB = zeros(2)
     worstA = (-Inf, ""); worstB = (-Inf, "")
+    # For each home: P, Q and voltages in A and in B; keep totals and the highest home voltage in each
     for (i, cp) in enumerate(cps)
         pA, qA = getpq(snapA, net, cp.id); pB, qB = getpq(snapB, net, cp.id)
         vA, nA = getv(snapA, cp);          vB, nB = getv(snapB, cp)
@@ -98,6 +112,7 @@ function run_lv9_verify_diag(; pu = 0.94, kw = 2.445, pattern = "bc")
                 parse(Float64, f[8]), parse(Float64, f[9]), parse(Float64, f[10]), parse(Float64, f[11]),
                 parse(Float64, f[12]))
     end
+    # Write one row per home to lv9_verify_diag.csv
     open(joinpath(pwd(), "results", "lv9", "lv9_verify_diag.csv"), "w") do io
         println(io, "customer,bus,phase,utilisation,P_verify,Q_verify,Vpn_verify_V,Vneutral_verify_V,P_realised,Q_realised,Vpn_realised_V,Vneutral_realised_V")
         foreach(l -> println(io, l), rows)

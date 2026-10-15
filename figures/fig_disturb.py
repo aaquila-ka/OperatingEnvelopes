@@ -1,3 +1,6 @@
+# fig_disturb.py: draws fig_disturb.png, the three kinds of record error and their effect.
+# Reads results/doe_record_errors.csv, results/doe_critical_cables.csv and
+# results/doe_dirty_snapshot.csv. Run from this folder: python fig_disturb.py
 import matplotlib.pyplot as plt, pandas as pd, numpy as np
 from matplotlib.patches import FancyBboxPatch
 from style import *

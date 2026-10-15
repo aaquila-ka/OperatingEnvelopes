@@ -1,3 +1,6 @@
+# fig_key.py: draws fig_key.png, how much too generous the basic limit is across supply
+# voltages on both streets. Reads results/doe_source_sweep.csv and results/lv9/lv9_sweep.csv
+# (through data.py). Run from this folder: python fig_key.py
 import matplotlib.pyplot as plt
 from style import *
 from data import *
@@ -34,7 +37,7 @@ a2.set_xlim(0.925, 1.015)
 a2.text(0.97, 2.2, "falls as voltage rises\n(we have not yet tested\nbelow 0.94)", fontsize=12.5,
         color=MUTED, ha="center", va="center")
 fig.text(0.03, 0.02,
-         "12-home street: all 22 service cables really 4 mm\u00b2, map says 16 mm\u00b2 (results/doe_source_sweep.csv, 12:00 rows). "
+         "12-home street: all 22 service-cable segments really 4 mm\u00b2, map says 16 mm\u00b2 (results/doe_source_sweep.csv, 12:00 rows). "
          "123-home street: its 12 shared cables wrong (results/lv9/lv9_sweep.csv).\n"
          "At low supply voltage both 12-home limits sit near the inverter size (5 kVA), so the wrong map changes little. The 123-home street is already voltage-squeezed\n"
          "at 0.94 (its transformer is set 2.5 % higher, so its 1.00 is about the 12-home street's 1.025), so we only see its falling side.", fontsize=10.5, color=MUTED, va="bottom")

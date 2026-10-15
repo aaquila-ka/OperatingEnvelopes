@@ -34,22 +34,28 @@
 
 include(joinpath(pwd(), "scripts", "bmopf", "lv9", "lv9_common.jl"))
 
+# Bus on the low-voltage side of the transformer: the root of the street's tree
 const LV_ROOT = "b342"
+# The 12 shared segments found by a separate check; only used to warn if the trace disagrees
 const AUDIT_UPSTREAM = Set(["l_72", "l_1557", "l_1752", "l_2373", "l_2525", "l_2783",
                             "l_2897", "l_3156", "l_3443", "l_3542", "l_3635", "l_4010"])
 
 # ---- radial tree: for every 16 mm2 segment, how many customers are downstream, and its kind
 function classify_segments(net)
+    # Map: for each bus, its neighbours and the segment joining them
     adj = Dict{String,Vector{Tuple{String,String}}}()          # bus => [(neighbour, edge id)]
     addedge(a, b, id) = (push!(get!(adj, a, Tuple{String,String}[]), (b, id));
                          push!(get!(adj, b, Tuple{String,String}[]), (a, id)))
     for (id, l) in net["line"]
         addedge(lowercase(String(l["bus_from"])), lowercase(String(l["bus_to"])), String(id))
     end
+    # Closed switches also join buses (open ones are skipped)
     for (id, s) in get(net, "switch", Dict())
         get(s, "open_switch", false) && continue
         addedge(lowercase(String(s["bus_from"])), lowercase(String(s["bus_to"])), "switch:" * String(id))
     end
+    # Walk out from the transformer (breadth-first): remember each bus's parent segment and its
+    # distance along the cables from the transformer
     parent = Dict{String,Tuple{String,String}}(); dist = Dict(LV_ROOT => 0.0)
     queue = [LV_ROOT]; seen = Set([LV_ROOT])
     while !isempty(queue)
@@ -62,6 +68,8 @@ function classify_segments(net)
             push!(queue, b)
         end
     end
+    # For each home, walk back up to the transformer and add 1 to every segment on the way.
+    # So ncust[segment] = how many homes are behind (downstream of) that segment
     custbus = Dict(lowercase(String(l["bus"])) => String(lid) for (lid, l) in net["load"])
     ncust = Dict{String,Int}(); path_of = Dict{String,Vector{String}}()
     for (cb, lid) in custbus
@@ -72,6 +80,8 @@ function classify_segments(net)
         end
         path_of[lid] = p
     end
+    # Sort the 16 mm2 segments: no homes behind = stub (dead end); touches a home and only that
+    # home is behind = drop (the home's own service cable); otherwise = upstream (shared cable)
     kinds = Dict{String,String}()
     for id in service_ids(net)
         l = net["line"][id]
@@ -82,6 +92,7 @@ function classify_segments(net)
     return kinds, ncust, dist, custbus, path_of
 end
 
+# Make the listed segments 4 mm2. This builds the TRUE street; the records still say 16 mm2
 function set_small!(net, ids)
     for id in ids
         net["line"][id]["linecode"] = SMALL_LC
@@ -89,6 +100,8 @@ function set_small!(net, ids)
     return net
 end
 
+# Split the 16 mm2 segments into drops (123), upstream / shared (12) and stubs (44) and print
+# the counts; check there is one drop per home and warn if the shared list differs from the check
 function segment_sets(net)
     kinds, ncust, dist, custbus, path_of = classify_segments(net)
     drops = sort([k for (k, v) in kinds if v == "drop"])
@@ -101,9 +114,13 @@ function segment_sets(net)
     return drops, up, stubs, kinds, ncust, dist, custbus, path_of
 end
 
+# Main sweep: at each source voltage, compare the DOE (export limit every home gets) from the
+# records (all 16 mm2) with the correct DOE when the drops, the 12 shared segments, or all 179
+# are really 4 mm2. Writes lv9_sweep.csv and lv9_segments.csv
 function run_lv9_sweep(; pus = [0.94, 0.97, 1.00])
     t0 = time()
     mkpath(joinpath(pwd(), "results", "lv9"))
+    # Trace the segment kinds once (they do not depend on the source voltage) and save them
     net1 = make_net(1.00)
     drops, up, stubs, kinds, ncust, dist, _, _ = segment_sets(net1)
     open(joinpath(pwd(), "results", "lv9", "lv9_segments.csv"), "w") do io
@@ -112,22 +129,32 @@ function run_lv9_sweep(; pus = [0.94, 0.97, 1.00])
             @printf(io, "%s,%s,%d,%.4f\n", id, kinds[id], get(ncust, id, 0), Float64(net1["line"][id]["length"]))
         end
     end
+    # The three 'truths': which segments are really 4 mm2
     cases = [("drops_123", drops), ("upstream_12", up), ("all_179", vcat(drops, up, stubs))]
     println("\n  pu    (LV3-eq) | clean kW  bind     | case          correct kW  gap kW  over-prom | realised V  >253  curtail kW")
     rows = String[]
     for pu in pus
+        # DOE from the records (street as the records say, all 16 mm2): this is what gets issued
         clean, cb, cv, cst, _ = eq_doe(make_net(pu))
         for (cname, ids) in cases
+            # The TRUE street for this case, and its correct DOE
             truth = set_small!(make_net(pu), ids)
             a, ab, _, ast, _ = eq_doe(truth)
+            # Give every home the records' DOE on the TRUE street and read the highest home voltage.
+            # Realised reading = homes export up to the cap with inverter rules (Volt-VAr / Volt-Watt) on
+            # and no voltage limit imposed, then we read the voltage
             rv = realised(truth, clean)
+            # Print one table row. pu = grid voltage relative to normal. Gap = records DOE minus correct DOE;
+            # over-promise % = 100 x (records / correct - 1)
             @printf(" %5.3f  (%5.3f)  | %7.3f  %-8s | %-12s  %7.3f   %+6.3f  %+7.1f %% |  %7.2f    %3d    %6.3f\n",
                     pu, pu * LV9_EQUIV, clean, cb, cname, a, clean - a, 100 * (clean / a - 1), rv.v, rv.n_over, rv.curtail_kW)
+            # Same numbers as one CSV row (DOEs, gap, %, realised voltage, homes over 253 V, curtailment, solver status)
             push!(rows, @sprintf("%.3f,%.4f,%.6f,%s,%s,%.6f,%s,%.6f,%.3f,%.4f,%d,%.6f,%s,%s",
                                  pu, pu * LV9_EQUIV, clean, cb, cname, a, ab, clean - a, 100 * (clean / a - 1),
                                  rv.v, rv.n_over, rv.curtail_kW, cst, ast))
         end
     end
+    # Write all rows to results/lv9/lv9_sweep.csv
     open(joinpath(pwd(), "results", "lv9", "lv9_sweep.csv"), "w") do io
         println(io, "source_pu,lv3_equiv_pu,clean_kW,clean_binding,case,correct_kW,correct_binding,gap_kW,overpromise_pct,realised_V_VW,n_customers_over_253,curtail_kW,clean_status,correct_status")
         foreach(l -> println(io, l), rows)
@@ -140,19 +167,24 @@ function run_lv9_single(pu = 1.00)
     t0 = time()
     net0 = make_net(pu)
     drops, _, _, _, _, dist, custbus, _ = segment_sets(net0)
+    # DOE from the records on the clean street, plus the solved result (to read each home's voltage)
     clean, cb, _, _, r = eq_doe(net0)
     snap = r.snapshots[1]
     @printf("clean equal DOE %.3f kW (%s) at %.3f pu\n", clean, cb, pu)
+    # Look up which home sits at a bus
     bus2cust = Dict(b => lid for (b, lid) in custbus)
     rows = String[]
     println("  drop        customer          length m  dist m  headroom V | correct kW  gap kW | realised V  >253")
     for (i, id) in enumerate(drops)
         l  = net0["line"][id]
+        # Find the home end of this drop, and that home's phase
         bf = lowercase(String(l["bus_from"])); bt = lowercase(String(l["bus_to"]))
         cbus = haskey(bus2cust, bf) ? bf : bt
         lid = bus2cust[cbus]; ph = String(net0["load"][lid]["terminal_map"][1])
+        # Headroom: how many volts this home is below 253 V at the clean DOE
         head = V_MAX_PN - vpn(snap["bus"][cbus], ph)
         try
+            # TRUE street: only this one drop is 4 mm2. Its correct DOE, and the realised reading of the records' DOE
             truth = set_small!(make_net(pu), [id])
             a, _, _, _, _ = eq_doe(truth)
             rv = realised(truth, clean)
@@ -161,10 +193,12 @@ function run_lv9_single(pu = 1.00)
             push!(rows, @sprintf("%.3f,%s,%s,%s,%.4f,%.4f,%.4f,%.6f,%.6f,%.6f,%.4f,%d,%.6f,\"%s\"",
                                  pu, id, lid, cbus, Float64(l["length"]), dist[cbus], head, clean, a, clean - a,
                                  rv.v, rv.n_over, rv.curtail_kW, rv.who))
+        # If one case fails, print the error and carry on with the next drop
         catch err
             println("  ", id, "  ERROR: ", first(sprint(showerror, err), 100))
         end
     end
+    # Write one row per drop to lv9_single_drops_<pu>.csv
     open(joinpath(pwd(), "results", "lv9", @sprintf("lv9_single_drops_%.2f.csv", pu)), "w") do io
         println(io, "source_pu,segment,customer,customer_bus,length_m,distance_from_tx_m,clean_headroom_V,clean_kW,correct_kW,gap_kW,realised_V_VW,n_customers_over_253,curtail_kW,customers_over_253")
         foreach(l -> println(io, l), rows)
@@ -181,25 +215,33 @@ function run_lv9_fairness(pu = 1.00; drop = "")
         drop = sort(drops; by = id -> -Float64(net0["line"][id]["length"]))[1]
     end
     rows = String[]
+    # Try both sharing rules: equal and proportional
     for policy in (:equal, :proportional)
         cps = connection_points(net0)
+        # Limits issued from the records (clean street), one per home, in kW
         ri  = doe(make_net(pu), cps; fairness = policy)
         issued = Dict(cp.id => ri.envelope[cp.id][1] / 1000 for cp in cps)
         @printf("\n=== %s: issued total %.1f kW, min %.3f kW ===\n", policy, sum(values(issued)), minimum(values(issued)))
+        # Two truths: only the chosen drop is 4 mm2, or the 12 shared segments are 4 mm2
         for (cname, ids) in (("drop_" * drop, [drop]), ("upstream_12", up))
             truth = set_small!(make_net(pu), ids)
+            # Correct limits on the true street, with the same sharing rule
             rc = doe(truth, connection_points(truth); fairness = policy)
             correct = Dict(cp.id => rc.envelope[cp.id][1] / 1000 for cp in cps)
+            # Gap per home (issued minus correct); count homes whose limit changes by more than 0.05 kW
             gaps = [issued[k] - correct[k] for k in keys(issued)]
             nchg = count(g -> abs(g) > 0.05, gaps)
+            # Give every home its issued limit on the true street and read the voltage
             rv = realised(truth, issued)
             @printf("  %-16s changed %3d of %d | total gap %+7.2f kW | realised %7.2f V, %3d over 253 V, curtail %.2f kW\n",
                     cname, nchg, N_CUST, sum(gaps), rv.v, rv.n_over, rv.curtail_kW)
+            # CSV row; the list of homes over 253 V is left out when more than 10 homes are over
             push!(rows, @sprintf("%.3f,%s,%s,%.6f,%.6f,%d,%.6f,%.4f,%d,%.6f,\"%s\"",
                                  pu, policy, cname, sum(values(issued)), sum(values(correct)), nchg, sum(gaps),
                                  rv.v, rv.n_over, rv.curtail_kW, rv.n_over > 10 ? "" : rv.who))
         end
     end
+    # Write lv9_fairness.csv
     open(joinpath(pwd(), "results", "lv9", "lv9_fairness.csv"), "w") do io
         println(io, "source_pu,policy,case,issued_total_kW,correct_total_kW,n_customers_changed,total_gap_kW,realised_V_VW,n_customers_over_253,curtail_kW,customers_over_253")
         foreach(l -> println(io, l), rows)
@@ -216,7 +258,9 @@ function run_lv9_upstream(pu = 1.00)
     @printf("clean equal DOE %.3f kW (%s) at %.3f pu\n", clean, cb, pu)
     println("  segment   customers behind  length m | correct kW  gap kW | realised V  >253  curtail kW")
     rows = String[]
+    # Shared segment with the most homes behind it first
     for id in sort(up; by = id -> -get(ncust, id, 0))
+        # TRUE street: only this shared segment is 4 mm2. Correct DOE, and realised reading of the records' DOE
         truth = set_small!(make_net(pu), [id])
         a, _, _, _, _ = eq_doe(truth)
         rv = realised(truth, clean)
@@ -226,6 +270,7 @@ function run_lv9_upstream(pu = 1.00)
                              pu, id, get(ncust, id, 0), Float64(net0["line"][id]["length"]), clean, a, clean - a,
                              rv.v, rv.n_over, rv.curtail_kW))
     end
+    # Write lv9_single_upstream_<pu>.csv
     open(joinpath(pwd(), "results", "lv9", @sprintf("lv9_single_upstream_%.2f.csv", pu)), "w") do io
         println(io, "source_pu,segment,customers_downstream,length_m,clean_kW,correct_kW,gap_kW,realised_V_VW,n_customers_over_253,curtail_kW")
         foreach(l -> println(io, l), rows)

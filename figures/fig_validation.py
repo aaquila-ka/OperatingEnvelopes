@@ -1,3 +1,6 @@
+# fig_validation.py: draws fig_validation.png, BMOPFTools vs OpenDSS voltages with the same
+# inverter outputs (12-home street). Reads results/pf_validation_lv3_pinned.csv.
+# Run from this folder: python fig_validation.py
 import matplotlib.pyplot as plt, pandas as pd, numpy as np
 from style import *
 setup()

@@ -7,6 +7,11 @@ authors:
     family-names: Akbar
     affiliation: "The University of Queensland"
 repository-code: "https://github.com/aaquila-ka/OperatingEnvelopes"
+# Licence note: the code is MIT (see LICENSE). The network data in data/networks/,
+# the results in results/ and the figure images in figures/ are CC BY-NC-SA 4.0,
+# because they come from the CSIRO dataset. CFF reads a list of licences as
+# "either one" (OR), which would be wrong here, so only MIT is given below.
+# See README.md, "Licence", for which licence covers which files.
 license: MIT
 keywords:
   - dynamic operating envelopes
@@ -15,7 +20,7 @@ keywords:
   - network model errors
   - rooftop solar
 references:
-  - type: dataset
+  - type: data
     title: "Realistic Australian medium voltage feeder with associated low voltage feeders"
     authors:
       - family-names: Geth

@@ -20,7 +20,7 @@ All thesis scripts use the project in the `bmopf/` folder. Its `Manifest.toml` l
 The top-level `Project.toml` is the older PowerModelsDistribution setup (used only by the early study scripts) and is NOT used for these results.
 Random draws use Julia's MersenneTwister; streams can change between Julia versions, so the scatter factors, changed segments and profile map are also written to the CSVs.
 
-First-time setup, from the repository folder (on the author's laptop C:\thesis\OperatingEnvelopes) in a terminal:
+First-time setup, from the repository folder in a terminal:
 
     julia +1.11 --project=bmopf -e "using Pkg; Pkg.instantiate()"
 
@@ -28,14 +28,14 @@ First-time setup, from the repository folder (on the author's laptop C:\thesis\O
 
 `data/networks/LV3_55bus_withPV/` is the CSIRO LV3 feeder (55 buses, 500 kVA 11/0.433 kV Dyn transformer, tap 1.025, four-wire, 12 single-phase customers), with these changes from the original:
 
-- Master.dss: source pu = 1.00 (original dataset value; scripts scale it, usually to 1.03); `batchedit load..* kw=1` commented out; `Set MaxControlIter=100`
+- Master.dss: source moved to a new bus `sourcebus` with pu = 1.00 written out (same as the dataset; scripts scale it, usually to 1.03), joined to the 11 kV bus by a short meter line `for_energymeter` with an EnergyMeter; `redirect PVSystems.dss` added; `batchedit load..* kw=1` commented out; the `solve` and `export` lines removed; `Set MaxControlIter=100` and `Set tolerance=0.00001` added (full list in data/networks/README.md)
 - Transformers.dss: LV winding `bus=B641.1.2.3.4` (star point on the neutral, not ground)
 - PVSystems.dss: 12 x 5 kVA / 5 kW PV systems, connected `.x.4` (phase-to-neutral), one InvControl `invall` with AS/NZS 4777.2 Australia A curves; tighter InvControl tolerances
 - Loads.dss: all 12 loads = original CSIRO values, 1 kW, 0.539743 kvar (0.88 power factor)
 
 `scripts/bmopf/load_lv3.jl` also fixes the inverter settings after import (see the comments at the top of that file).
 
-House usage for the day runs: `data/profiles/TeamNando_OE1_LoadShapes.txt` (Team-Nando OE1-Ideal, commit 96abbab, BSD-3; licence in the same folder; SHA1 FE3A06F54025E1B4268F523AC1DB1E7870BCF33C).
+House usage for the day runs: `data/profiles/TeamNando_OE1_LoadShapes.txt` (Team-Nando OE1-Ideal, commit 96abbab, BSD-3; licence in the same folder; SHA1 8116287f0eb1b67f1aa933f2ec28e0730060c98a with LF line endings, as stored in this repository; a Windows checkout with CRLF endings gives FE3A06F54025E1B4268F523AC1DB1E7870BCF33C).
 These 99 profiles are AusNet households from Team-Nando's 342-household x 365-day pool ("Residential load data 30-min resolution.npy", in OEs-The-Basics and MV-LV-Networks; not included here, see data/profiles/pool/README_pool.md), all on day index 350: the lowest-demand day in the dataset (mean 9.71 kWh per house vs 12.06 kWh on the median day). Checked: the 5-min OE1 shapes averaged to 30 min equal the pool values to 1e-15 kW for all 99. The OE1 PV shape is not from the pool's PV file; its daily energy is above about 76 % of the pool's PV days.
 
 ## 3. Run order
@@ -57,7 +57,7 @@ Start Julia from the repository folder with `julia +1.11 --project=bmopf`. For s
 | 11 | `include("scripts/bmopf/doe_source_sweep.jl")` then `run_source_sweep()` | Case A at 1.00-1.035 pu | results/doe_source_sweep.csv |
 | 12 | `include("scripts/bmopf/doe_robust.jl")` then `run_robust()` | hedge in advance vs check records first | results/doe_robust.csv |
 | 13 | `include("scripts/bmopf/doe_fairness.jl")` then `run_fairness()` | equal, proportional and max-min sharing rules | results/doe_fairness_summary.csv, results/doe_fairness_customers.csv |
-| 14 | `include("scripts/bmopf/doe_ratio.jl")` then `run_ratio()` | cable ratio 3.07 (dataset) vs 4.0 (IEC) | results/doe_ratio.csv |
+| 14 | `include("scripts/bmopf/doe_ratio.jl")` then `run_ratio()` | cable ratio 3.07 (dataset line codes) vs a higher test ratio of 4.0 | results/doe_ratio.csv |
 | 15 | `include("scripts/bmopf/doe_clearsky.jl")` then `run_clearsky()` | clear-sky day (assumed peak 0.85) | results/doe_clearsky.csv |
 | 16 | `include("scripts/bmopf/doe_verify_proportional.jl")` then `run_verify_proportional()` | checking records under proportional vs equal sharing | results/doe_verify_proportional.csv |
 | 17 | `include("scripts/bmopf/doe_partial_lv3.jl")` then `run_partial_lv3()` | partial export (7 phase patterns) and cable currents | results/doe_partial_lv3.csv, results/cable_currents_lv3.csv |
@@ -78,6 +78,7 @@ Start Julia from the repository folder with `julia +1.11 --project=bmopf`. For s
 | 32 | `include("scripts/bmopf/doe_partial_util_lv3.jl")` then `run_partial_util_lv3()` | dropout-secure DOE vs 300 random part-export mixes, snapshot and 12:00 (~2 min) | results/doe_partial_util_lv3.csv |
 | 33 | `include("scripts/bmopf/lv9/lv9_verify_diag.jl")` then `run_lv9_verify_diag()` | LV9 verify vs realised, customer by customer (known issue 20) | results/lv9/lv9_verify_diag.csv |
 | 34 | `include("scripts/bmopf/validate_pf_vs_opendss.jl")` | unpinned BMOPF power flow vs OpenDSS; not a like-for-like test, see known issue 25 | results/pf_validation_lv3.csv |
+| 35 | `include("scripts/bmopf/dataset/pool_profiles.jl")` then `check_pool()` | checks Team-Nando's house-usage pool and that the 99 OE1 profiles equal its day index 350 (needs the pool .npy files, not included, see data/profiles/pool/README_pool.md; a few seconds) | results/dataset/pool_check.txt |
 
 The ~46 "from_dss: ... could not be represented" warnings at import are expected (OpenDSS fields like `units` that BMOPF does not need).
 
@@ -97,7 +98,7 @@ The ~46 "from_dss: ... could not be represented" warnings at import are expected
 | Robust, 12:00 | hedge b = 5 / 10 / 20 %: 4.124 / 4.004 / 3.785 kW (scenario check identical); check records: 1.959 kW (none) -> 2.428 (1) -> 4.253 (11) |
 | Cable ratio 4.0, 12:00 | correct 1.624 kW, gap 2.628 kW (+161.8 %), sun-limited 255.12 V (3.07: 1.959 kW, 254.29 V) |
 | Clear-sky day | 21 half-hours above 253 V (07:30-17:30), peak 255.22 V |
-| Checking under proportional, 12:00 | total share 64 % (none) -> 75 / 84 / 94 / 100 % after 3 / 6 / 9 / 11 checks (equal: 46 % until the last) |
+| Checking under proportional, 12:00 | total share 64 % (none) -> 75 / 84 / 94 / 100 % after 3 / 6 / 9 / 11 checks (equal, OPF-ranked: 46 -> 57 / 60 / 60 -> 100 %; equal, shortest first: 46 % until all 12 are checked) |
 | LV3 partial export / phase-secure | worst 253.30 V; phase-secure DOE -4.8 % (snapshot), -9.7 % (12:00) |
 | LV9 clean DOE | 3.587 kW (0.94 pu), 1.654 kW (1.00 pu), voltage-limited; OpenDSS 0.0007 V with ideal switches |
 | LV9 shared vs drops (0.94 pu) | 12 shared wrong: gap 1.458 kW, 258.99 V; l_2373 alone 1.333 kW; drops wrong: 0.238 kW; 6 of 123 single drops matter |
@@ -118,13 +119,13 @@ The ~46 "from_dss: ... could not be represented" warnings at import are expected
 - Inverters: 5 kVA, Volt-VAr and Volt-Watt on phase-to-neutral voltage, reactive priority.
 - Source voltage: 1.03 pu for the main results (also used in Geth's PowerOptLab LV3 study, there with 1 % source unbalance); 1.00-1.035 pu in the source sweep.
 - Cable error: 22 service-cable segments; 16 mm² vs 4 mm² copper from the dataset's own line codes (resistance ratio 3.07).
-- Security of the DOE: bound-point (everyone exports at once), phase-secure (also safe when one or two whole phases export nothing, checked with verify_operating_envelope) and dropout-secure (realised reading <= 253.005 V for nobody dropped, the 7 phase patterns, and every 1- or 2-customer dropout on LV3 / every single dropout on LV9). The dropout-secure DOE is the safest version and is used for the headline results.
+- Security of the DOE: bound-point (everyone exports at once), phase-secure (also safe when one or two whole phases export nothing, checked with verify_operating_envelope) and dropout-secure (realised reading <= 253.005 V for nobody dropped, the 7 phase patterns, and every 1- or 2-customer dropout on LV3 / every single dropout on LV9). The dropout-secure DOE is the safest of the three and is used for the headline results. The idea comes from Liu and Braslavsky (IEEE Access, 2022) and PowerOptLab's `doe_dropout_utilizations` (F. Geth); see ACKNOWLEDGEMENTS.md.
 - Two readings of what an issued DOE does on the true street: bound-point (everyone exports exactly the DOE, Volt-Watt off; worst case) and realised (everyone may export up to the cap, all inverter laws on; physical). Day runs also cap export by the sun available.
 
 ## 6. Known issues and limitations
 
 1. Source voltage drives the size of the error (section 4, source sweep). Team-Nando's MV profile is about 0.99-1.00 pu; the LV operating point depends on the transformer tap. Always quote the error together with the source voltage.
-2. Resistance ratio: the dataset's 16 mm² line code (1.49 Ω/km) is about 30 % above the IEC 60228 20 °C maximum (1.15 Ω/km), while its 4 mm² code (4.57 Ω/km) is close to IEC (4.61). The 3.07 ratio is therefore conservative; doe_ratio.jl shows that the IEC ratio 4.0 adds about 0.35 kW to the gap and 0.5-0.8 V to the realised peak.
+2. Resistance ratio: the 3.07 ratio comes from the dataset's own line codes (self resistance 4.57 Ω/km for 4 mm² vs 1.49 Ω/km for 16 mm²). It is not taken from a standard. doe_ratio.jl also tests a higher ratio of 4.0 (labelled `IEC` in the script and CSV): it adds about 0.35 kW to the gap and 0.5-0.8 V to the realised peak, so a bigger real ratio would make the results worse, not better.
 3. Equal allocation is the main rule; one critical customer sets everyone's DOE. Proportional and max-min are tested in doe_fairness.jl: they change who absorbs the error, not the physical over-voltage.
 4. One feeder, one day, one set of 12 profiles, 5 kVA inverters.
 5. Network losses: BMOPF p_loss (lines + transformer) is about 7 % below OpenDSS because the 8 closed switches are 1 mΩ elements in OpenDSS (switch=y) but ideal ties in BMOPFTools (28.2 W), and BMOPF's p_loss leaves out the earthing shunts (0.5 W). With both added, losses agree within 0.8 W (387.6 vs 386.9 W, 0.2 %) (loss breakdown printed by validate_network_pinned.jl). The switch impedance also explains most of the 0.10 V voltage difference. Negligible for DOEs.
@@ -148,7 +149,7 @@ The ~46 "from_dss: ... could not be represented" warnings at import are expected
 22. On LV3, checking the 85 cases found the same worst case as checking all 4094 on/off combinations, so dropping 3 or more customers never made things worse there. On LV9, pairs (7503 cases) were not checked; single dropouts never bind, the binding case is always one whole phase silent.
 23. The harm from a wrong record is not monotone in source voltage (also item 13): on LV9 the dropout-secure gap is 0.82-0.87 kW at 0.94 pu but 0-0.12 kW at 1.00 pu, where every customer is already limited to about 1.1 kW and the shared cable carries little current.
 24. Current ratings found since item 18 (not yet used in any run): 4 mm2 Cu 33 A buried / 33 A duct and 16 mm2 110 / 81 A (MEC XV datasheet, AS/NZS 3008.1.1 basis); AusNet library in Team-Nando MV-LV-Networks: 16 mm2 Cu 107 / 91 A, 240 mm2 Al 280 / 325 A (meaning of the two columns undocumented, probably summer / winter).
-25. Unpinned comparison (validate_pf_vs_opendss.jl, step 34) is not a like-for-like test. The BMOPFTools power flow (solve_pf) treats Volt-Watt as a cap, so it does not fix each inverter's P, and it returns Q = 0 (Stage 3 of the development notes). Rerun on the current model (1.00 pu): for example ld1970 gets 1.124 kW, 0 kvar in BMOPF but 4.924 kW, -0.869 kvar in OpenDSS, so the voltages differ by up to 2.07 V (b828 b-n), neutral up to 0.91 V. This shows the inverter outputs differ, not the network model. The network model is validated with the same P and Q in both programs (step 2: largest difference 0.104 V); the inverter curves are checked separately (OpenDSS InvControl gives the AS/NZS 4777.2 values exactly); and the OPF-based realised reading, which does apply the inverter laws, matched an exact OpenDSS solve within 0.03 V (DATA_CARD.md, "How much to trust it").
+25. Unpinned comparison (validate_pf_vs_opendss.jl, step 34) is not a like-for-like test. The BMOPFTools power flow (solve_pf) treats Volt-Watt as a cap, so it does not fix each inverter's P, and it returns Q = 0 (Stage 3 of the development notes). Rerun on the current model (1.00 pu): for example ld1970 gets 1.124 kW, 0 kvar in BMOPF but 4.924 kW, -0.869 kvar in OpenDSS, so the voltages differ by up to 2.07 V (b828 b-n), neutral up to 0.91 V. This shows the inverter outputs differ, not the network model. The network model is validated with the same P and Q in both programs (step 2: largest difference 0.103 V); the inverter curves are checked separately (OpenDSS InvControl gives the AS/NZS 4777.2 values exactly); and the OPF-based realised reading, which does apply the inverter laws, matched an exact OpenDSS solve within 0.03 V (DATA_CARD.md, "How much to trust it"; the files of that separate OpenDSS rebuild are not included in this repository).
 26. The 4094 on/off check (step 27) covers every combination of the 12 customers exporting or not, at one operating point (12:00 loads, 1.03 pu, the dropout-secure DOE). It is not a check over all days or voltages.
 27. curtail_kW is about 0.001 kW low for each customer given a limit of 0, because the solver needs a cap above zero and those customers get 1 W (doe_fairness.jl / lv9_common.jl realised()). Seen in doe_partial_lv3.csv and lv9_partial.csv (e.g. -0.082 kW with 82 silent customers). Voltages and DOEs are not affected.
 28. Bisection limits: the correct DOE in the records runs is searched between 0 and the issued DOE, so a gap can never come out negative ("no gap" means gap <= 0). The search step is about issued/1024 (LV9) or 1/4096 of the range (LV3), always rounding to the safe side, so gaps carry about 0.002 kW of grid precision.
@@ -156,6 +157,8 @@ The ~46 "from_dss: ... could not be represented" warnings at import are expected
 30. scripts/bmopf/doe_dirty_origloads.jl and its CSV are from an earlier version: the script calls a helper that has since been renamed, so it no longer runs, and the loads it compares are now the default. It is kept for history only and is not part of the run order.
 31. The scripts in scripts/ (01-05, count_linecodes.jl, sensitivity_service_cable.jl) and scripts/study/ are early exploration on the older top-level PowerModelsDistribution project (Julia 1.9). Their outputs (e.g. results/sensitivity_service_cable.csv) come from earlier model states and are not thesis results.
 32. Voltage lower limit: the model uses 207 V (DATA_CARD.md cites AS 61000.3.100); AS 60038's 230 V -6 % would be 216.2 V. The source for 207 V is still to be confirmed. All results in this thesis are about the 253 V upper limit.
+33. Line current limits in the OPF: checked. After import, every line code carries a current limit of 600 A (the OpenDSS default, because the dataset's line codes give no real rating), and the lines take it from their line code. This is not a real cable rating (a 16 mm² service cable is rated about 110 A). It never limits any result here: the highest current at a DOE is about 73 A on LV3 (results/cable_currents_lv3.csv) and 497 A on LV9 (results/lv9/lv9_cable_currents.csv, 0.94 pu), both below 600 A. So all DOEs in this repo are set by voltage or the inverter size, not by current. Real cable ratings are tested separately in lv9_thermal.jl. Check used (after include("scripts/bmopf/load_lv3.jl")): list net["linecode"][k]["i_max"].
+34. Minor logging points: a NaN cap (no sun) is logged as "no export"; a failed solve is counted as "over 253 V" (so it is never hidden as a pass); and "0 over" means every checked voltage is at or below 253.005 V (the tolerance in item 21).
 
 ## 7. Where the history is
 

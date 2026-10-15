@@ -18,8 +18,14 @@
 # Used for: REPRODUCE.md steps 18 and 24 (phase-secure DOEs), also used in 25-26 and 29
 # Credits:  PowerOptLab.jl (verify_operating_envelope) and BMOPFTools.jl by Frederik Geth; Ipopt
 # =============================================================================
+# DOE = export limit every home gets; bound-point (basic) DOE = checked only with everyone
+# exporting.
+# The 7 phase patterns say which phases export: "abc" = everyone, "bc" = homes on phase a export
+# nothing, and so on
 const PS_PATTERNS = ["abc", "bc", "ac", "ab", "a", "b", "c"]
 
+# ps_patterns: for each pattern, a list with 1.0 for a home on an exporting phase and 0.0 for a home
+# on a silent phase (how much of its limit each home uses in that pattern)
 function ps_patterns(cps)
     [[(cp.phase_terminals[1][1] in pat) ? 1.0 : 0.0 for cp in cps] for pat in PS_PATTERNS]
 end
@@ -28,7 +34,10 @@ end
 # ev.feasible has one entry per time step, not per pattern: PowerOptLab 953e45c solves all 7
 # patterns together in one model, so feasible[1] = true only if every pattern is feasible.
 function ps_feasible(net, cps, kw)
+    # The same limit (in W) for every home
     caps = Dict(cp.id => 1000.0 * kw for cp in cps)
+    # Check all 7 patterns at once; the network's 207-253 V limits stay on, so feasible = no home
+    # goes outside them in any pattern
     ev = verify_operating_envelope(net, cps, caps; utilizations = ps_patterns(cps), solver_options = OPTS)
     return ev.feasible[1]
 end
@@ -38,8 +47,10 @@ end
 # 10 steps narrow the answer to bound_kw / 1024 (about 4 W); the safe lower end is returned.
 function ps_doe(net, bound_kw; iters = 10)
     cps = connection_points(net)
+    # If the bound-point DOE already passes all 7 patterns, keep it (0 steps)
     ps_feasible(net, cps, bound_kw) && return bound_kw, 0
     lo, hi = 0.0, bound_kw
+    # Bisection: try the middle; safe -> raise the floor (lo), unsafe -> lower the ceiling (hi)
     for it in 1:iters
         mid = (lo + hi) / 2
         ps_feasible(net, cps, mid) ? (lo = mid) : (hi = mid)

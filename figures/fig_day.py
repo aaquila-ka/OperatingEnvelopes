@@ -1,3 +1,6 @@
+# fig_day.py: draws fig_day.png, the whole day on the 12-home street: sun, the correct and
+# the issued limit, and the highest home voltage. Reads results/doe_timeseries.csv.
+# Run from this folder: python fig_day.py
 import matplotlib.pyplot as plt, pandas as pd, numpy as np
 from style import *
 setup()
@@ -43,7 +46,7 @@ a2.text(5.0, 254.6, f"{n_over} half-hours above 253 V\n(shaded)", fontsize=14, h
 a2.set_xticks(range(0, 25, 3), [f"{x:02d}:00" for x in range(0, 25, 3)])
 a2.set_xlim(0, 24); a2.set_xlabel("time of day")
 a2.grid(axis="x", visible=False)
-fig.text(0.03, 0.008, "Wrong map: all 22 service cables really 4 mm², map says 16 mm². "
+fig.text(0.03, 0.008, "Wrong map: all 22 service-cable segments really 4 mm², map says 16 mm². "
          "Inverter Volt-VAr and Volt-Watt on. Voltage only shown while the sun is up. Data: results/doe_timeseries.csv", fontsize=10.5, color=MUTED)
 fig.subplots_adjust(top=0.85, bottom=0.12, left=0.1, right=0.98)
 fig.savefig("fig_day.png", dpi=200)
